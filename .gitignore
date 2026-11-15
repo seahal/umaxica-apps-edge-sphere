@@ -11,6 +11,7 @@ worker
 **/.astro/
 
 worker-configuration.d.ts
+cloudflare-env.d.ts
 
 # Scratch output. tools/verify-edge-connectivity.mjs writes its per-child logs to
 # tmp/connectivity-check/ so a failing run keeps the full output without the

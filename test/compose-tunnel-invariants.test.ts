@@ -3,23 +3,23 @@
  * Edge and Global use different Tunnel IDs and tokens and share no Podman network.
  * Everything reads files directly, so the checks require no container engine.
  */
-import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { join, relative } from "node:path";
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 
-const repoRoot = join(import.meta.dirname, '..');
-const read = (relativePath: string) => readFileSync(join(repoRoot, relativePath), 'utf8');
+const repoRoot = join(import.meta.dirname, "..");
+const read = (relativePath: string) => readFileSync(join(repoRoot, relativePath), "utf8");
 
-const composeBase = read('compose.yaml');
-const composeDevcontainer = read('.devcontainer/compose.yaml');
+const composeBase = read("compose.yaml");
+const composeDevcontainer = read(".devcontainer/compose.yaml");
 // `compose.override.yaml` is the OPTIONAL developer-local override: gitignored,
 // absent on a fresh clone, never created automatically, and carrying arbitrary
 // host-specific edits where it exists. Only the tracked example can be asserted
 // on, and it is documentation rather than a required input.
-const composeOverrideExample = read('compose.override.yaml.example');
-const devcontainer = read('.devcontainer/devcontainer.json');
+const composeOverrideExample = read("compose.override.yaml.example");
+const devcontainer = read(".devcontainer/devcontainer.json");
 
 /**
  * Every compose file that can define a service, checked as one set.
@@ -31,8 +31,8 @@ const devcontainer = read('.devcontainer/devcontainer.json');
  * the count is asserted, not just the names.
  */
 const composeFiles = [
-  ['compose.yaml', composeBase],
-  ['compose.override.yaml.example', composeOverrideExample],
+  ["compose.yaml", composeBase],
+  ["compose.override.yaml.example", composeOverrideExample],
 ] as const;
 
 /**
@@ -43,7 +43,7 @@ const composeFiles = [
  * node_modules, and untracked tool caches for free.
  */
 function collectSourceFiles(): string[] {
-  const extensions = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.json', '.jsonc'];
+  const extensions = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".json", ".jsonc"];
 
   return (
     trackedFiles()
@@ -56,25 +56,25 @@ function collectSourceFiles(): string[] {
 }
 
 function trackedFiles(): string[] {
-  const injected = process.env['EDGE_TRACKED_FILES'];
+  const injected = process.env["EDGE_TRACKED_FILES"];
   if (injected !== undefined) {
-    return injected.split('\n').filter(Boolean);
+    return injected.split("\n").filter(Boolean);
   }
-  return execFileSync('git', ['ls-files'], { cwd: repoRoot, encoding: 'utf8' })
-    .split('\n')
+  return execFileSync("git", ["ls-files"], { cwd: repoRoot, encoding: "utf8" })
+    .split("\n")
     .filter(Boolean);
 }
 
-describe('Edge-owned tunnel connector', () => {
-  it('pins the supported cloudflared release in the shared file only', () => {
+describe("Edge-owned tunnel connector", () => {
+  it("pins the supported cloudflared release in the shared file only", () => {
     // The connector is shared infrastructure, so it is defined once, centrally.
     // Only its token is per-developer, and that comes from the gitignored `.env`
     // rather than from the developer-local overlay.
-    expect(composeBase).toContain('docker.io/cloudflare/cloudflared:2026.8.2');
-    expect(composeOverrideExample).not.toContain('cloudflared');
+    expect(composeBase).toContain("docker.io/cloudflare/cloudflared:2026.8.2");
+    expect(composeOverrideExample).not.toContain("cloudflared");
   });
 
-  it('keeps exactly three compose files, each with a distinct role', () => {
+  it("keeps exactly three compose files, each with a distinct role", () => {
     // The assertions above are only as complete as this list: the shared
     // services and the per-unit dev servers are in `compose.yaml`, `core` is in
     // `.devcontainer/compose.yaml`, and everything machine-specific goes in the
@@ -89,49 +89,49 @@ describe('Edge-owned tunnel connector', () => {
       .filter((path) => /(?:^|\/)compose\..*ya?ml(?:\.example)?$/u.test(path))
       .sort();
     expect(trackedCompose).toEqual([
-      '.devcontainer/compose.yaml',
-      'compose.override.yaml.example',
-      'compose.yaml',
+      ".devcontainer/compose.yaml",
+      "compose.override.yaml.example",
+      "compose.yaml",
     ]);
 
     // Invariant E: the override itself must stay untracked. Committing it would
     // put one developer's host in everyone's checkout, and it would silently
     // outrank the example these invariants read. The retired `compose.custom.*`
     // names must not come back either.
-    expect(trackedCompose).not.toContain('compose.override.yaml');
-    expect(trackedCompose).not.toContain('compose.custom.yaml');
-    expect(trackedCompose).not.toContain('compose.custom.yaml.example');
+    expect(trackedCompose).not.toContain("compose.override.yaml");
+    expect(trackedCompose).not.toContain("compose.custom.yaml");
+    expect(trackedCompose).not.toContain("compose.custom.yaml.example");
   });
 
-  it('defines one hardened connector without a cross-project network', () => {
+  it("defines one hardened connector without a cross-project network", () => {
     // `core` is the only service in the Dev Container's file, and the connector is
-    // the only service in `compose.yaml` without a profile -- the twenty dev
+    // the only service in `compose.yaml` without a profile -- the two Core dev
     // servers all sit behind `profiles: [app]`, so a bare `podman compose up`
     // starts the connector and nothing else.
     const namesIn = (text: string): string[] => {
-      const block = /^services:\n((?: .*\n|\n)*)/mu.exec(text)?.[1] ?? '';
+      const block = /^services:\n((?: .*\n|\n)*)/mu.exec(text)?.[1] ?? "";
       return [...block.matchAll(/^ {2}([a-z0-9][\w-]*):/gmu)].map((match) => match[1] as string);
     };
-    expect(namesIn(composeDevcontainer)).toEqual(['core']);
+    expect(namesIn(composeDevcontainer)).toEqual(["core"]);
 
     const alwaysStarted = namesIn(composeBase).filter((name) => {
       const body =
-        new RegExp(`^ {2}${name}:\n((?: {4}.*\n|\n)*)`, 'mu').exec(composeBase)?.[1] ?? '';
-      return !body.includes('<<: *unit') && !body.includes('profiles:');
+        new RegExp(`^ {2}${name}:\n((?: {4}.*\n|\n)*)`, "mu").exec(composeBase)?.[1] ?? "";
+      return !body.includes("<<: *unit") && !body.includes("profiles:");
     });
-    expect(alwaysStarted).toEqual(['cloudflare-tunnel']);
+    expect(alwaysStarted).toEqual(["cloudflare-tunnel"]);
 
-    const connector = /^ {2}cloudflare-tunnel:\n((?: {4}.*\n|\n)*)/mu.exec(composeBase)?.[1] ?? '';
-    expect(connector).not.toBe('');
-    expect(connector).not.toContain('umaxica-edge-tunnel');
-    expect(connector).not.toContain('host.docker.internal');
-    expect(connector).toContain('read_only: true');
-    expect(connector).toContain('no-new-privileges:true');
-    expect(connector).toContain('cap_drop:');
-    expect(connector).toContain('restart: on-failure:3');
+    const connector = /^ {2}cloudflare-tunnel:\n((?: {4}.*\n|\n)*)/mu.exec(composeBase)?.[1] ?? "";
+    expect(connector).not.toBe("");
+    expect(connector).not.toContain("umaxica-edge-tunnel");
+    expect(connector).not.toContain("host.docker.internal");
+    expect(connector).toContain("read_only: true");
+    expect(connector).toContain("no-new-privileges:true");
+    expect(connector).toContain("cap_drop:");
+    expect(connector).toContain("restart: on-failure:3");
   });
 
-  it('starts the connector with the standard devcontainer lifecycle', () => {
+  it("starts the connector with the standard devcontainer lifecycle", () => {
     // Invariant B: exactly two compose files, both tracked, so the Dev
     // Container configuration resolves on a fresh clone with no local file
     // creation. `core` is defined in the second one, which is what keeps it out
@@ -150,7 +150,7 @@ describe('Edge-owned tunnel connector', () => {
     // `compose.yaml` and `scripts/dev-start` — a second volume set, and a port
     // clash with the containers `--remove-existing-container` then fails to
     // find. The example shows the right value.
-    expect(composeOverrideExample).toMatch(/^name: umaxica-apps-edge$/mu);
+    expect(composeOverrideExample).toMatch(/^name: umaxica-apps-edge-sphere$/mu);
     expect(devcontainer).toContain('"runServices": ["core", "cloudflare-tunnel"]');
   });
 
@@ -166,7 +166,7 @@ describe('Edge-owned tunnel connector', () => {
    * `:-` chain between two credential variables can do that again, so none may
    * appear here. See ADR 014.
    */
-  it('reads the tunnel token from exactly one variable, with no fallback chain', () => {
+  it("reads the tunnel token from exactly one variable, with no fallback chain", () => {
     expect(composeBase).toMatch(/TUNNEL_TOKEN: ['"]\$\{CLOUDFLARED_TOKEN:-\}['"]/u);
     // A second `${` inside the TUNNEL_TOKEN value is a fallback chain.
     expect(composeBase).not.toMatch(/TUNNEL_TOKEN:[^\n]*\$\{[^}]*\$\{/u);
@@ -180,10 +180,10 @@ describe('Edge-owned tunnel connector', () => {
    * is where the requirement is enforced instead, and it has to look in `.env` as
    * well as in the shell, because compose reads that file and bash does not.
    */
-  it('refuses to start a tunnel without a token', () => {
+  it("refuses to start a tunnel without a token", () => {
     expect(composeBase).not.toMatch(/CLOUDFLARED_TOKEN:\?/u);
 
-    const devStart = read('scripts/dev-start');
+    const devStart = read("scripts/dev-start");
     expect(devStart).toMatch(/--tunnel requires CLOUDFLARED_TOKEN/u);
     expect(devStart).toContain("sed -n 's/^CLOUDFLARED_TOKEN=//p' .env");
   });
@@ -195,8 +195,8 @@ describe('Edge-owned tunnel connector', () => {
    * host. That comparison is now the only thing standing between a pasted `.env`
    * and a repeat of 2026-09-04.
    */
-  it('refuses to add a second connector to a tunnel that already has one', () => {
-    const devStart = read('scripts/dev-start');
+  it("refuses to add a second connector to a tunnel that already has one", () => {
+    const devStart = read("scripts/dev-start");
     expect(devStart).toMatch(/tunnel_uuid_of\(\)/u);
     expect(devStart).toMatch(/already has a connector on this host/u);
     // Every cloudflared container on the host counts, not only this compose
@@ -207,18 +207,18 @@ describe('Edge-owned tunnel connector', () => {
   });
 });
 
-describe('secret hygiene', () => {
-  it('keeps .env untracked and ignored', () => {
+describe("secret hygiene", () => {
+  it("keeps .env untracked and ignored", () => {
     const tracked = trackedFiles();
 
-    expect(tracked).not.toContain('.env');
-    expect(tracked.filter((path) => path.startsWith('.env') && path !== '.env.example')).toEqual(
+    expect(tracked).not.toContain(".env");
+    expect(tracked.filter((path) => path.startsWith(".env") && path !== ".env.example")).toEqual(
       [],
     );
-    expect(read('.gitignore')).toMatch(/^\.env$/mu);
+    expect(read(".gitignore")).toMatch(/^\.env$/mu);
   });
 
-  it('ships value-free .env examples everywhere', () => {
+  it("ships value-free .env examples everywhere", () => {
     /*
      * Name-agnostic on purpose: rather than listing the variables that happen to
      * exist today, assert that no tracked `.env.example` assigns a value to
@@ -231,8 +231,10 @@ describe('secret hygiene', () => {
     const allowedWithValue = new Set<string>();
     const offenders: string[] = [];
 
-    for (const path of trackedFiles().filter((file) => file.endsWith('.env.example'))) {
-      for (const line of read(path).split('\n')) {
+    for (const path of trackedFiles().filter(
+      (file) => file.endsWith(".env.example") && existsSync(join(repoRoot, file)),
+    )) {
+      for (const line of read(path).split("\n")) {
         const match = /^([A-Z0-9_]+)=(.+)$/u.exec(line.trim());
         if (match && !allowedWithValue.has(match[1] as string)) {
           offenders.push(`${path}: ${match[1]}`);
@@ -243,7 +245,7 @@ describe('secret hygiene', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('never exposes a credential through a client-visible variable prefix', () => {
+  it("never exposes a credential through a client-visible variable prefix", () => {
     // NEXT_PUBLIC_* and VITE_* are inlined into the browser bundle at build
     // time. A name matching /token|secret|credential/ under those prefixes is
     // a leak regardless of the value.
@@ -253,7 +255,7 @@ describe('secret hygiene', () => {
 
     for (const file of collectSourceFiles()) {
       if (relative(repoRoot, file) === relative(repoRoot, import.meta.filename)) continue;
-      if (forbidden.test(readFileSync(file, 'utf8'))) {
+      if (forbidden.test(readFileSync(file, "utf8"))) {
         offenders.push(relative(repoRoot, file));
       }
     }
@@ -261,7 +263,7 @@ describe('secret hygiene', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('never relays an inbound caller credential onward to Rails', () => {
+  it("never relays an inbound caller credential onward to Rails", () => {
     /*
      * The direction of trust. A credential arriving on an inbound request — a
      * browser session cookie, an `Authorization` header, an Access token
@@ -272,11 +274,7 @@ describe('secret hygiene', () => {
      * `test/rails-connection-invariants.test.ts` covers the other half: no
      * credential may be committed to source or to `wrangler.jsonc`.
      */
-    const clients = ['app', 'com', 'org'].flatMap((tld) =>
-      ['core', 'docs', 'news', 'help', 'info'].map(
-        (frame) => `${tld}/${frame}/src/lib/rails-client.ts`,
-      ),
-    );
+    const clients = ["app/core", "org/core"].map((core) => `${core}/src/lib/rails-client.ts`);
 
     for (const client of clients) {
       const source = read(client);
@@ -293,15 +291,15 @@ describe('secret hygiene', () => {
       );
 
       for (const header of [
-        'cookie',
-        'authorization',
-        'cf-access-client-id',
-        'cf-access-client-secret',
+        "cookie",
+        "authorization",
+        "cf-access-client-id",
+        "cf-access-client-secret",
       ]) {
         expect(source, `${client} must strip ${header}`).toContain(`'${header}'`);
       }
 
-      const stripIndex = source.indexOf('FORBIDDEN_REQUEST_HEADERS) {');
+      const stripIndex = source.indexOf("FORBIDDEN_REQUEST_HEADERS) {");
       expect(stripIndex, `${client} lost the header strip`).toBeGreaterThan(-1);
 
       // No frame applies a transport credential after the strip: the Cores reach
@@ -309,25 +307,25 @@ describe('secret hygiene', () => {
       // (adr/018-core-rails-direct-internet.md) and the public cells through the
       // Workers VPC binding, which carries none either — so nothing may be added
       // back.
-      expect(source, `${client} must apply no transport credentials`).not.toContain('authHeaders');
+      expect(source, `${client} must apply no transport credentials`).not.toContain("authHeaders");
     }
   });
 });
 
-describe('environment separation', () => {
-  it('keeps the application environment at development, never aliased to staging', () => {
+describe("environment separation", () => {
+  it("keeps the application environment at development, never aliased to staging", () => {
     // If staging returns, it arrives as new wrangler env blocks and new
     // Cloudflare config — not as a branch in application code.
     const offenders: string[] = [];
 
     for (const file of collectSourceFiles()) {
       const path = relative(repoRoot, file);
-      if (path.includes('test/') || path.endsWith('.test.ts') || path.endsWith('.test.tsx'))
+      if (path.includes("test/") || path.endsWith(".test.ts") || path.endsWith(".test.tsx"))
         continue;
-      if (path === 'plans' || path.startsWith('plans/')) continue;
+      if (path === "plans" || path.startsWith("plans/")) continue;
       if (
         /(?:ENV|environment|NODE_ENV)\b[^\n]{0,40}===?\s*['"]staging['"]/u.test(
-          readFileSync(file, 'utf8'),
+          readFileSync(file, "utf8"),
         )
       ) {
         offenders.push(path);

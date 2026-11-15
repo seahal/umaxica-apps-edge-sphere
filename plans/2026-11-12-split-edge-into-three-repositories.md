@@ -1,20 +1,21 @@
 # Split umaxica-apps-edge into Three Repositories (2026-11-12)
 
-Status: decided direction (owner, 2026-11-12); repository names and details open. Nothing is
-implemented.
+Status: owner decision accepted; pruning is being executed under the
+2026-11-14 Sphere work order.
 
 ## Decisions (owner)
 
 1. **Three repositories**, following the Cosmos split:
 
-   | New repository | Takes from this repository | Related Cosmos repository |
-   | --- | --- | --- |
-   | acme (formerly "apex") | `*/apex` (`app`, `com`, `org`, `dev`, `net`) | the apex (acme) domains |
-   | sphere | `*/core` (`app`, `org`) | umaxica-apps-cosmos-sphere |
-   | press | `*/docs`, `*/help`, `*/info`, `*/news` (`app`, `com`, `org`) | umaxica-apps-cosmos-press |
+   | New repository           | Takes from this repository                                   | Related Cosmos repository  |
+   | ------------------------ | ------------------------------------------------------------ | -------------------------- |
+   | zenith (formerly "apex") | `*/apex` (`app`, `com`, `org`, `dev`, `net`)                 | the apex (zenith) domains  |
+   | sphere                   | `*/core` (`app`, `org`)                                      | umaxica-apps-cosmos-sphere |
+   | press                    | `*/docs`, `*/help`, `*/info`, `*/news` (`app`, `com`, `org`) | umaxica-apps-cosmos-press  |
 
-   The apex group is renamed **acme**, because it serves the acme domains. The Edge repositories are
+   The Apex group is named **Zenith**. The Edge repositories are
    not bound to Rails, so their names are free.
+
 2. **How to split:** copy this repository into each new one, then delete what that repository does
    not own. No shared package is created up front.
 3. **Vite+ (`vp`) is adopted** in all three. Every package already builds on Vite (Hono with a Vite
@@ -25,7 +26,7 @@ implemented.
 ## Decided later the same day (owner, 2026-11-12)
 
 - **No `.com` in sphere.** `com/core` is retired, not carried over. If a `.com` Core is ever needed,
-  decide then. Press keeps its `.com` surfaces; acme's `.com` follows Governance's Base com decision.
+  decide then. Press keeps its `.com` surfaces; zenith's `.com` follows Governance's Base com decision.
 - **`all/busy` and `tools/vpc-probe`:** delete each when it is no longer needed. `tools/vpc-probe`
   moves to the sphere repository, its only user.
 - **Toolchain versions follow the newest releases:** Node.js 26 LTS and pnpm 12, moving to newer
@@ -39,17 +40,17 @@ implemented.
 
 | Group  | Repository                 |
 | ------ | -------------------------- |
-| acme   | `umaxica-apps-edge-acme` |
+| zenith | `umaxica-apps-edge-zenith` |
 | sphere | `umaxica-apps-edge-sphere` |
 | press  | `umaxica-apps-edge-press`  |
 
-The acme group's repository is `umaxica-apps-edge-acme` (owner, 2026-11-13; the older
+The zenith group's repository is `umaxica-apps-edge-zenith` (owner, 2026-11-13; the older
 `umaxica-apps-edge-apex` repository on GitHub is unrelated and keeps its name). Region is configuration inside `umaxica-apps-edge-sphere`, not
 a per-region repository.
 
 ## History (owner, 2026-11-12)
 
-This repository is renamed to `umaxica-apps-edge-sphere` and keeps its Git history. Acme and press
+This repository is renamed to `umaxica-apps-edge-sphere` and keeps its Git history. Zenith and Press
 start as copies (`git clone` of this repository, so their history up to the split is kept too) and
 then delete what they do not own.
 
@@ -60,7 +61,7 @@ commit. Each phase ends with a review by Claude before the next one starts.
 
 0. **Freeze (owner).** Commit or stash open work on `feature`, merge to `main`, push. Record the
    source commit hash; both copies start from it.
-1. **Create the copies (owner).** Create empty GitHub repositories `umaxica-apps-edge-acme` and
+1. **Create the copies (owner).** Create empty GitHub repositories `umaxica-apps-edge-zenith` and
    `umaxica-apps-edge-press`; clone this repository into each local folder, set the new `origin`,
    push `main`. Rename this repository on GitHub to `umaxica-apps-edge-sphere` and update the local
    folder and `origin` URL (GitHub redirects the old name).
@@ -68,28 +69,28 @@ commit. Each phase ends with a review by Claude before the next one starts.
 3. **Cloudflare (owner, later).** Worker names, routes and secrets stay as they are until each
    repository deploys green; then remove the old deploy paths from the repositories that no longer
    own them. No Worker is renamed in this plan.
-4. **Close.** Archive this plan to `plans/archive/` in sphere; record the split commit hashes in
+4. **Close.** Keep this decision record in Sphere; record split commit hashes in
    `evidence/` of each repository.
 
 ### Ownership after the split
 
-| Path in this repository                     | acme   | sphere | press |
-| ------------------------------------------- | ------ | ------ | ----- |
-| `{app,com,org,dev,net}/apex`                | keep   | delete | delete |
-| `{app,org}/core`                            | delete | keep   | delete |
-| `com/core`                                  | delete | delete (retired) | delete |
-| `{app,com,org}/{docs,help,info,news}`       | delete | delete | keep  |
-| `all/busy`                                  | delete | keep until unneeded | delete |
-| `tools/vpc-probe`                           | delete | keep   | delete |
-| other `tools/`, `scripts/`, `test/`, `e2e/` | keep only what references kept packages | same | same |
-| `adr/`, `docs/`, `research/`, `specs/`      | keep what concerns kept packages; mark others superseded or delete | same | same |
+| Path in this repository                     | zenith                                                             | sphere              | press  |
+| ------------------------------------------- | ------------------------------------------------------------------ | ------------------- | ------ |
+| `{app,com,org,dev,net}/apex`                | keep                                                               | delete              | delete |
+| `{app,org}/core`                            | delete                                                             | keep                | delete |
+| `com/core`                                  | delete                                                             | delete (retired)    | delete |
+| `{app,com,org}/{docs,help,info,news}`       | delete                                                             | delete              | keep   |
+| `all/busy`                                  | delete                                                             | keep until unneeded | delete |
+| `tools/vpc-probe`                           | delete                                                             | keep                | delete |
+| other `tools/`, `scripts/`, `test/`, `e2e/` | keep only what references kept packages                            | same                | same   |
+| `adr/`, `docs/`, `research/`, `specs/`      | keep what concerns kept packages; mark others superseded or delete | same                | same   |
 
 Paths not listed are resolved by the same rule: keep what a kept package uses.
 
 ### Codex work order (run once per repository, replace `<REPO>` and the keep-list)
 
 ```
-Repository: <REPO> (umaxica-apps-edge-acme | -sphere | -press), freshly copied from
+Repository: <REPO> (umaxica-apps-edge-zenith | -sphere | -press), freshly copied from
 umaxica-apps-edge at commit <SOURCE_SHA>. Read AGENTS.md first.
 Goal: this repository owns only <KEEP-LIST from the ownership table in
 plans/2026-11-12-split-edge-into-three-repositories.md>. Delete everything else.

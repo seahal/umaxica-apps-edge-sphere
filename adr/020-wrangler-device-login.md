@@ -1,5 +1,7 @@
 # ADR 020: Wrangler authenticates with the Device Authorization Grant
 
+> Scope note: the root VPC check commands described below were removed during the split. Sphere retains tools/vpc-probe as a standalone diagnostic and the Core packages use public fetch.
+
 ## Status
 
 Accepted — 2026-09-19.

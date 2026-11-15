@@ -1,11 +1,9 @@
 // The direct Workers VPC transport probe.
 //
-// This exists to answer two questions that `/rails-health` structurally cannot:
-// did the request actually leave over the VPC binding, and did the Rails entry
-// point this frame addresses answer it? `RailsHealthResult` records no
-// transport identity and no namespace, so a green `/rails-health` is consistent
-// with a completely broken binding — and, because one VPC Service carries all
-// fifteen frames, with a request that silently reached the wrong namespace.
+// This retained local diagnostic answers whether requests leave over the VPC
+// binding and which Rails host answers them. The application packages that own
+// these public content hosts moved to the Press repository; this probe remains
+// here by owner decision and is not a deployed Sphere application surface.
 //
 // Therefore this module imports nothing from the application, reads no
 // environment variables, and has no `fetch()` path. It calls the binding or it
@@ -23,15 +21,15 @@
 // populates the `Host` header (and SNI over https) and the port is ignored
 // outright. Rails dispatches on that `Host`, which is why every surface appears
 // here separately rather than one standing in for the rest: one Service is
-// still one transport, but twelve hosts are twelve answers, and only asking
-// all of them can show that each reached its own namespace.
+// still one transport, but each host is a separate answer, and asking all of
+// them can show that each reached its own namespace.
 //
-// The three Cores are absent: they reach Rails over the public internet at
-// `RAILS_ORIGIN`, not over Workers VPC (adr/018-core-rails-direct-internet.md).
+// The two Sphere Cores are absent: their code uses public fetch through the
+// request region's `RAILS_ORIGIN_JP` / `RAILS_ORIGIN_US`, not Workers VPC
+// (adr/018-core-rails-direct-internet.md).
 //
-// This list is generated from the surfaces and pinned by
-// `test/rails-connection-invariants.test.ts`, so it cannot drift from
-// `PRIVATE_RAILS_ORIGIN` and `RAILS_HEALTH_API_PATH`.
+// This fixed list belongs to the retained cross-repository probe. It does not
+// define the current Sphere package or Wrangler inventory.
 const RAILS_TARGETS = [
   { key: 'APP/DOCS', url: 'http://docs.app.localhost:3000/api/v0/health.json' },
   { key: 'APP/NEWS', url: 'http://news.app.localhost:3000/api/v0/health.json' },
@@ -92,7 +90,7 @@ export default {
 
     // Readiness is answered without touching the binding. The checker polls
     // until `wrangler dev` is listening, and a poll that ran the real probe
-    // would send fifteen requests to Rails per attempt.
+    // would send requests to every fixed Rails target per attempt.
     if (new URL(request.url).pathname === '/ready') {
       return Response.json({ probe: 'ready', targets: RAILS_TARGETS.length });
     }

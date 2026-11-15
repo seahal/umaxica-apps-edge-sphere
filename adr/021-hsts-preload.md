@@ -1,5 +1,7 @@
 # ADR 021: HSTS with preload on every Edge response
 
+> Current Sphere deployment scope is app/core and org/core. The remaining Worker and public-content evidence below is historical for this checkout.
+
 ## Status
 
 Accepted — 2026-09-19. Approved by the repository owner.

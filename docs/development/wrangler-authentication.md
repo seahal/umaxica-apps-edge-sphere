@@ -38,7 +38,7 @@ From outside the container, the same thing without entering it first:
 
 ```bash
 podman exec -it -w /home/edge/workspace \
-  umaxica-apps-edge-core-1 \
+  umaxica-apps-edge-sphere-core-1 \
   pnpm run login:device
 ```
 
@@ -85,11 +85,9 @@ while signed into the wrong Cloudflare account produces a perfectly valid token 
 wrong tenant, and nothing downstream will flag it. `connectivity (admin)` must appear in
 the scope list; it is what grants access to the VPC Service.
 
-Then exercise the transport itself:
-
-```bash
-pnpm run check:vpc
-```
+The former root VPC-check command was removed during the split. Sphere keeps
+`tools/vpc-probe` as a standalone diagnostic for Press-owned Rails hosts. It has no root script; use it only
+with an owner-approved current procedure and environment.
 
 ## Where the token lives
 
@@ -112,5 +110,5 @@ https://dash.cloudflare.com/oauth2/token
 Three loopback attempts immediately before it reached only
 `https://dash.cloudflare.com/oauth2/auth` and stranded their codes.
 
-`pnpm run check:vpc` then resolved the binding and reached Rails over the VPC Service,
-which is the acceptance this login exists to make possible.
+The VPC-probe run recorded here predates the repository split. Sphere keeps the probe
+source, but no equivalent root check command remains.

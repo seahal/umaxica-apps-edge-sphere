@@ -18,7 +18,7 @@
 // for the condition under which this file should grow.
 //
 // The JavaScript graph is small and fully enumerated: tools/*.mjs plus the
-// twenty per-unit api/run.mjs Hurl runners. scripts/ is deliberately absent —
+// the two Core api/run.mjs Hurl runners. scripts/ is deliberately absent —
 // every file there is `#!/usr/bin/env bash`, which no JS parser reads.
 {
   "forbidden": [
@@ -27,28 +27,28 @@
       "comment": "A cycle between modules makes initialisation order load-bearing and undoes the tree-shaking every bundler here relies on. Zero cycles exist today; this keeps it that way. oxlint's import/no-cycle holds the same line for TypeScript, which this tool cannot read.",
       "severity": "error",
       "from": {},
-      "to": { "circular": true }
+      "to": { "circular": true },
     },
     {
       "name": "not-to-unresolvable",
       "comment": "An import that resolves to nothing is a runtime crash waiting for the one code path that reaches it. tools/check-workers.mjs runs in CI without node_modules installed, so a stray package import here fails a job that has no way to satisfy it.",
       "severity": "error",
       "from": {},
-      "to": { "couldNotResolve": true }
+      "to": { "couldNotResolve": true },
     },
     {
       "name": "not-to-dev-dep",
       "comment": "These files run as deployment and verification tooling, including in the check-workers CI job that deliberately skips `pnpm install`. Reaching a devDependency from one is the failure that job is shaped to avoid.",
       "severity": "error",
       "from": { "path": "^tools/", "pathNot": "\\.(spec|test)\\.(js|mjs|cjs)$" },
-      "to": { "dependencyTypes": ["npm-dev"] }
+      "to": { "dependencyTypes": ["npm-dev"] },
     },
     {
       "name": "no-non-package-json",
       "comment": "An import that resolves only because a package was hoisted into the root node_modules is a dependency nobody declared. It disappears the moment the hoisting layout changes, and it breaks the repository-split promise every unit in this tree is built around.",
       "severity": "error",
       "from": {},
-      "to": { "dependencyTypes": ["unknown", "undetermined", "npm-no-pkg", "npm-unknown"] }
+      "to": { "dependencyTypes": ["unknown", "undetermined", "npm-no-pkg", "npm-unknown"] },
     },
     {
       "name": "no-deprecated-core",
@@ -57,8 +57,8 @@
       "from": {},
       "to": {
         "dependencyTypes": ["core"],
-        "path": "^(punycode|domain|constants|sys|_linklist|_stream_wrap)$"
-      }
+        "path": "^(punycode|domain|constants|sys|_linklist|_stream_wrap)$",
+      },
     },
 
     // ---- Rules that encode THIS repository's current, verified structure ----
@@ -68,30 +68,30 @@
       "comment": "tools/ is production tooling: it is invoked by pnpm scripts, by CI jobs and by operators. test/ is the repository-level invariant suite and depends on tools/, never the reverse. Allowing the back-edge would put test fixtures on a deployment path.",
       "severity": "error",
       "from": { "path": "^tools/" },
-      "to": { "path": "^test/" }
+      "to": { "path": "^test/" },
     },
     {
       "name": "tools-lib-is-a-leaf",
       "comment": "tools/lib/ is the shared implementation layer (wrangler-config.mjs), consumed by the tools/*.mjs entrypoints. It must not reach back up into an entrypoint — that is the cycle-in-waiting this layering exists to prevent, and it is the only local edge in the whole JavaScript graph.",
       "severity": "error",
       "from": { "path": "^tools/lib/" },
-      "to": { "path": "^tools/(?!lib/)" }
+      "to": { "path": "^tools/(?!lib/)" },
     },
     {
       "name": "api-runner-is-self-contained",
-      "comment": "Each unit's api/run.mjs spawns that unit's dev server, runs Hurl and stops it. All twenty are node:-builtins-only today, and that is what lets a unit be extracted into its own repository with its HTTP-contract suite intact. Any non-core import here — a shared helper, a sibling unit, an npm package — breaks that promise, so it fails rather than being discovered during an extraction.",
+      "comment": "Each unit's api/run.mjs spawns that unit's dev server, runs Hurl and stops it. Both are node:-builtins-only today, and that is what lets a unit be extracted into its own repository with its HTTP-contract suite intact. Any non-core import here — a shared helper, a sibling unit, an npm package — breaks that promise, so it fails rather than being discovered during an extraction.",
       "severity": "error",
       "from": { "path": "api/run\\.mjs$" },
-      "to": { "dependencyTypesNot": ["core"] }
-    }
+      "to": { "dependencyTypesNot": ["core"] },
+    },
   ],
 
   "options": {
     "doNotFollow": {
-      "path": ["node_modules"]
+      "path": ["node_modules"],
     },
     "exclude": {
-      "path": ["\\.wrangler/", "^coverage/", "^dist/"]
+      "path": ["\\.wrangler/", "^coverage/", "^dist/"],
     },
     // `no-orphans` is deliberately NOT enabled. Every module in scope except
     // tools/lib/wrangler-config.mjs is a CLI entrypoint reached through a pnpm
@@ -102,10 +102,10 @@
     "tsPreCompilationDeps": false,
     "enhancedResolveOptions": {
       "exportsFields": ["exports"],
-      "conditionNames": ["import", "require", "node", "default"]
+      "conditionNames": ["import", "require", "node", "default"],
     },
     "reporterOptions": {
-      "text": { "highlightFocused": true }
-    }
-  }
+      "text": { "highlightFocused": true },
+    },
+  },
 }

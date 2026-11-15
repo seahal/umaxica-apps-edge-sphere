@@ -1,5 +1,7 @@
 # ADR 008: Edge development surfaces are published through the Rails-owned Tunnel
 
+> Historical scope note: the ingress inventory below predates the split. Apex ingress moved to Zenith and public content ingress moved to Press.
+
 > Superseded for app/com/org apex only by [ADR 024](024-retire-app-com-org-apex-units.md). The record below is unchanged history.
 
 ## Status: Superseded by ADR 014

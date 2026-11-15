@@ -1,5 +1,7 @@
 # Plan 002: Create `dev/apex` — Hono on Vercel
 
+> Superseded: moved to umaxica-apps-edge-zenith. This historical record concerns the removed dev/apex unit.
+
 ## Status: Superseded 2026-08-19 by [ADR 012](012-apex-vite-build-and-static-assets.md)
 
 **`dev/apex` no longer runs on Vercel.** It deploys to Cloudflare Workers on
@@ -32,9 +34,9 @@ Export the Hono app directly from `src/index.ts` so Vercel can treat it as a fun
 
 ```ts
 // src/index.ts
-import { app } from './app';
+import { app } from "./app";
 
-export const runtime = 'edge';
+export const runtime = "edge";
 export default app;
 ```
 
@@ -47,13 +49,13 @@ No Vite build is needed. Keep the package build step limited to type-checking so
 Direct composition — no `createApexApp` factory.
 
 ```ts
-import { Hono } from 'hono';
+import { Hono } from "hono";
 
 const app = new Hono();
 
-app.get('/', (c) => c.redirect('https://umaxica.dev/', 301));
-app.get('/health', handleHealth);
-app.get('/about', handleAbout);
+app.get("/", (c) => c.redirect("https://umaxica.dev/", 301));
+app.get("/health", handleHealth);
+app.get("/about", handleAbout);
 
 export { app };
 ```

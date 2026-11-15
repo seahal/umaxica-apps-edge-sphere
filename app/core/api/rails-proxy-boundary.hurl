@@ -3,7 +3,7 @@
 # These are response-level facts — status codes on Rails-owned paths — so they
 # belong here and not in a `.test.ts`.
 #
-# No tier declares `RAILS_ORIGIN`, so a dispatch that reaches the upstream answers
+# No tier declares regional Rails origins, so a dispatch that reaches the upstream answers
 # 503 by design (`adr/018-core-rails-direct-internet.md`). That is what makes
 # these assertions work at all: 503 means "Edge classified this path as
 # Rails-owned and tried", which is precisely what separates a Rails-owned path

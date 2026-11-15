@@ -6,10 +6,10 @@
   "compatibility_flags": ["nodejs_compat"],
 
   // Never served, never deployed. This Worker exists only to be run by
-  // `pnpm run check:vpc` via `wrangler dev`.
+  // This Worker is a local diagnostic, run only through an owner-approved procedure.
   "workers_dev": false,
 
-  // Deliberately TOP LEVEL, unlike the fifteen frames: this Worker declares no environments,
+  // Deliberately TOP LEVEL, unlike the Core Workers: this Worker declares no environments,
   // is not in pnpm-workspace.yaml and has no deploy script, so the binding cannot leak into
   // one or ship — and inside an `env` block it would never resolve. tools/check-workers.mjs
   // asserts this. See adr/006-development-workers-vpc-transport.md.
@@ -17,7 +17,7 @@
     {
       "binding": "UMAXICA_APPS_EDGE_CF_WORKERS_VPC",
       "service_id": "01a06fd0-89b7-7613-9e1d-f7d07c693273",
-      "remote": true
-    }
-  ]
+      "remote": true,
+    },
+  ],
 }

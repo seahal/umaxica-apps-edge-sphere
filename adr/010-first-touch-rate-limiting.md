@@ -1,5 +1,7 @@
 # ADR 010: Rate limiting happens once, at first touch
 
+> Current Sphere scope is app/core and org/core. The other namespace assignments and Worker examples below are historical and moved with their packages.
+
 > 2026-10-11 amendment: Core no longer reads the Preference `language` Cookie.
 > Display locale (including 429) uses the last scalar `lx` URL parameter,
 > lowercased and validated, or the existing `ja` default. The twelve public
@@ -52,9 +54,9 @@ declared, so nothing changes about which requests are limited:
 ```ts
 function isRateLimitExempt(pathname: string): boolean {
   return (
-    pathname.startsWith('/_next/static/') ||
-    pathname.startsWith('/_next/image') ||
-    pathname === '/favicon.ico'
+    pathname.startsWith("/_next/static/") ||
+    pathname.startsWith("/_next/image") ||
+    pathname === "/favicon.ico"
   );
 }
 ```

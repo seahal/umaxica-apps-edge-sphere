@@ -1,17 +1,9 @@
-# Cloudflare Access development validation
+# Cloudflare Access development check
 
-The active procedure moved to
-[`docs/development/cloudflare-development-network.md`](../development/cloudflare-development-network.md)
-and
-[`docs/development/credential-and-secret-management.md`](../development/credential-and-secret-management.md).
+`scripts/check-tunnel` verifies the Access-protected development Rails URL provided
+through `EDGE_TUNNEL_RAILS_URL`. It uses `cloudflared access` to obtain a short-lived
+browser-login token when needed, then checks reachability.
 
-Access service tokens are used only by `scripts/check-tunnel` and, optionally, by
-`tools/verify-edge-connectivity.mjs`. They are not an application fallback and are not loaded into
-the normal application runtime.
-
-For the sixteen Edge development surfaces, the authority is the "Cloudflare Access" section of
-[`cloudflare-tunnel-development.md`](cloudflare-tunnel-development.md). Two things to know before
-reading anything older: Access covers **all sixteen** hostnames as of 2026-08-11, and it covers the
-**whole host** — there is no `/health*` Bypass, so health endpoints answer a 302 unauthenticated
-like every other path. `adr/008-edge-development-tunnel-exposure.md` records why the Bypass was
-declined and what it costs.
+The check does not configure Access, change a Tunnel, or exercise a production
+Core Worker. Do not place token contents in command output or evidence. External
+Access applications, hostnames and policies remain owner-managed.

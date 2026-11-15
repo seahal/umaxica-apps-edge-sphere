@@ -16,9 +16,9 @@ Neither is health. `/health` and `/api/v0/health.json` remain separate contracts
 
 ## Authority
 
-Cloudflare Workers `version_metadata` (`id`, `tag`, `timestamp`). Apex binds it
-as `CF_VERSION_METADATA`. Frames bind it as `REVISION`. The HTTP contract does
-not depend on the binding name.
+Cloudflare Workers `version_metadata` (`id`, `tag`, `timestamp`). Both retained
+Core Workers bind it as `REVISION`. The HTTP contract does not depend on the
+binding name.
 
 Do not derive revision from Git SHA, package version, build time, Rails, or
 Workers VPC.
@@ -84,10 +84,9 @@ Hurl owns this representation: `<unit>/api/revision-api.hurl`.
 
 ## Units
 
-| Runtime        | Units                                 | Mechanism                                                           |
-| -------------- | ------------------------------------- | ------------------------------------------------------------------- |
-| Hono           | `{app,com,org,net,dev}/apex`          | `create-apex-app.ts`                                                |
-| TanStack Start | `{app,com,org}/core`                  | `src/routes/revision.ts` and `src/routes/api.v0.revision[.]json.ts` |
-| TanStack Start | `{app,com,org}/{docs,help,info,news}` | `src/routes/revision.ts` and `src/routes/api.v0.revision[.]json.ts` |
+| Runtime        | Units                  | Mechanism                                                           |
+| -------------- | ---------------------- | ------------------------------------------------------------------- |
+| TanStack Start | `app/core`, `org/core` | `src/routes/revision.ts` and `src/routes/api.v0.revision[.]json.ts` |
 
-No Next.js unit remains active.
+The Apex and public content implementations moved to Zenith and Press. No
+Next.js unit remains active in Sphere.

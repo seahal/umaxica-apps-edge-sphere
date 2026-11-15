@@ -1,13 +1,13 @@
 # The Edge → Rails proxy trust boundary
 
-Normative for `{app,com,org}/core/src/lib/core-dispatch.ts` and the two modules
+Normative for `{app,org}/core/src/lib/core-dispatch.ts` and the two modules
 it composes. The decision record is
 [ADR 023](../../adr/023-rails-proxy-trust-boundary.md); this page is the
 operational reference — what the contract is, and what you must not do to it.
 
-The three Cores are one implementation in three copies
+The two retained Cores are one implementation in two copies
 (`test/core-dispatch-contract.test.ts` enforces that). A change to any rule here
-is a change to all three.
+is a change to both.
 
 ## 1. Client IP
 

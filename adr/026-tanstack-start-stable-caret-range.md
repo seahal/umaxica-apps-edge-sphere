@@ -1,5 +1,7 @@
 # ADR 026: TanStack Start is stable; its catalog range is `^`
 
+> Current Sphere scope is app/core and org/core. The public content packages continue to own their TanStack Start versions in Press.
+
 ## Status: Implemented 2026-10-14
 
 ## Context

@@ -1,5 +1,7 @@
 # ADR 024: Retire the app/com/org apex deployment units
 
+> Superseded: moved to umaxica-apps-edge-zenith. This historical record concerns Apex ownership.
+
 ## Status: Accepted 2026-10-01 — code and Cloudflare cutover done
 
 > Superseded by [ADR 027](027-reintroduce-app-com-org-apex-units.md) (2026-10-14): the three units are reintroduced. The record below is unchanged history.

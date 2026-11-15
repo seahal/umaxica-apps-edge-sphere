@@ -1,24 +1,6 @@
 packages:
-  - app/apex
   - app/core
-  - app/docs
-  - app/help
-  - app/info
-  - app/news
-  - com/apex
-  - com/core
-  - com/docs
-  - com/help
-  - com/info
-  - com/news
-  - dev/apex
-  - net/apex
-  - org/apex
   - org/core
-  - org/docs
-  - org/help
-  - org/info
-  - org/news
 
 allowBuilds:
   # Unlike every other entry here, hurl has NO prebuilt binary inside the
@@ -28,7 +10,7 @@ allowBuilds:
   # `pnpm test:api` failing with ENOENT. This is the one place in the toolchain
   # where `ignore-scripts=true` has to be relaxed, and it is relaxed for a
   # version-pinned devDependency that never reaches a Worker bundle.
-  '@orangeopensource/hurl': true
+  "@orangeopensource/hurl": true
   esbuild: true
   lefthook: true
   sharp: true
@@ -36,34 +18,33 @@ allowBuilds:
 
 catalog:
   # Paraglide is the generated, request-isolated message runtime for the
-  # fifteen TanStack frames. The strategy list is pinned in each Vite config;
-  # this catalog keeps compiler behavior identical across all units.
-  '@inlang/paraglide-js': 3.0.0
-  '@inlang/plugin-m-function-matcher': 2.4.1
-  '@inlang/plugin-message-format': 4.5.7
-  '@cloudflare/vite-plugin': ^1.68.0
-  '@cloudflare/workers-types': ^5.20261110.1
-  '@fontsource-variable/inter': ^5.3.0
-  '@hono/structured-logger': ^1.0.0
+  # two regional TanStack Start Cores. The strategy list is pinned in each Vite config;
+  # this catalog keeps compiler behavior identical across both packages.
+  "@inlang/paraglide-js": 3.0.0
+  "@inlang/plugin-m-function-matcher": 2.4.1
+  "@inlang/plugin-message-format": 4.5.7
+  "@cloudflare/vite-plugin": ^1.68.0
+  "@cloudflare/workers-types": ^5.20261110.1
+  "@fontsource-variable/inter": ^5.3.0
   # Hurl is a Rust binary; this package is the official npm distribution of it
   # (bins `hurl` and `hurlfmt`). Installing it as a devDependency rather than
   # documenting a `brew`/`apt`/`cargo` step is what keeps pnpm the only entry
   # point a contributor needs — and what makes the HTTP-contract suite run at
   # the same version on a laptop and in CI. Catalogued for the same reason the
-  # rest of the toolchain is: seventeen units must not drift apart.
-  '@orangeopensource/hurl': ^8.1.0
-  # The browser-test runtime, in seventeen units. It pins the wire protocol as
+  # rest of the toolchain is: the two packages must not drift apart.
+  "@orangeopensource/hurl": ^8.1.0
+  # The browser-test runtime, in both Core packages. It pins the wire protocol as
   # well as the API, so two units on different minors drive two different
   # browsers. This sat as an identical literal in every manifest with nothing
   # enforcing it — syncpack's catalog policy now does (see .syncpackrc.json).
-  '@playwright/test': ^1.65.0
+  "@playwright/test": ^1.65.0
   # Size Limit's file plugin. `size-limit` itself and its plugins must move in
   # lockstep — the plugin package declares an EXACT peer on the runner
   # ("size-limit": "13.0.3"), so a drift here is a resolution failure, not a
   # subtle one. The preset packages are deliberately not used: @size-limit/time
   # (which preset-app pulls in) needs a headless Chrome that neither CI nor the
   # Containerfile installs — the same reason `test:e2e` is not a CI gate.
-  '@size-limit/file': ^14.3.0
+  "@size-limit/file": ^14.3.0
   # Tailwind v4 has no JS config file: the theme is declared in each unit's own
   # stylesheet with `@theme`. One engine, one delivery mechanism, because every
   # unit builds with Vite: `@tailwindcss/vite`.
@@ -76,15 +57,15 @@ catalog:
   # consumer until ADR 012 moved the last apex to Vite.
   #
   # `tailwindcss` and `@tailwindcss/vite` are pinned here rather than per unit
-  # so the seventeen units cannot drift onto different Tailwind versions.
-  '@tailwindcss/vite': ^4.3.5
-  # TanStack Router and TanStack Start, the framework behind all fifteen frames.
+  # so the two Core packages cannot drift onto different Tailwind versions.
+  "@tailwindcss/vite": ^4.3.5
+  # TanStack Router and TanStack Start, the framework for both Core packages.
   # They move in lockstep: Start names one exact Router release as a
   # `dependency` (not a peer range), so a Router that resolves ahead of it is
   # not a resolution failure — it is a second copy of Router installed beside
   # the one Start uses, which is silent. `test/tanstack-router-single-version.test.ts`
   # reads the lockfile and fails on that. Start is a `dependency` rather than a
-  # devDependency: unlike Vite, it IS in the request path, because every frame's
+  # devDependency: unlike Vite, it IS in the request path because each Core
   # Worker entry calls its `createStartHandler`.
   #
   # Start is stable as of 1.169.0 (2026-10-13), so the range is `^`: minors flow
@@ -93,48 +74,36 @@ catalog:
   #
   # The two numbers are a tested pair, not two independent choices: this Start
   # release depends on exactly this Router release.
-  '@tanstack/react-router': ^1.170.46
-  '@tanstack/react-start': ^1.169.5
+  "@tanstack/react-router": ^1.170.46
+  "@tanstack/react-start": ^1.169.5
   # Serves the agent skills that TanStack packages ship (`pnpm exec intent
   # list`), as the Skill Loading block at the top of AGENTS.md describes. Root
-  # only: it reads every unit's `node_modules` from the workspace root.
-  '@tanstack/intent': ^0.5.6
+  # only: it reads both Core packages' `node_modules` from the workspace root.
+  "@tanstack/intent": ^0.5.6
   # The DOM-assertion and DOM-implementation halves of the Vitest setup. Every
   # unit's vitest.setup.ts imports `@testing-library/jest-dom`, and every
   # vitest.config.ts names happy-dom as its environment, so a per-unit drift
   # here changes what a test MEANS rather than whether it runs.
-  '@testing-library/jest-dom': ^7.0.1
-  '@testing-library/react': ^16.3.3
-  '@types/node': ^26.6.6
-  '@types/react': ^19.3.0
-  '@types/react-dom': ^19.3.0
-  # React Fast Refresh and the JSX transform for the Vite-built units. The two
-  # apex Workers do not install it — they render with hono/jsx and have no React
-  # at all (docs/design/ui-shell-contract.md §3a).
-  '@vitejs/plugin-react': ^6.3.0
+  "@testing-library/jest-dom": ^7.0.1
+  "@testing-library/react": ^16.3.3
+  "@types/node": ^26.6.6
+  "@types/react": ^19.3.0
+  "@types/react-dom": ^19.3.0
+  # React Fast Refresh and JSX transform used by both Vite-built Core packages.
+  "@vitejs/plugin-react": ^6.3.0
   # Exact, not a range, and deliberately so: V8 coverage remapping has to match
   # the vitest it instruments, and the provider says so itself — it declares an
   # EXACT peer on the runner. `vitest` below is therefore exact too, at the same
   # version, and the two are only ever bumped together. That pairing is what
   # lets this file carry no `peerDependencyRules` exception for vitest.
-  '@vitest/coverage-v8': 5.1.0
+  "@vitest/coverage-v8": 5.1.0
   # The spell checker. Pinned here rather than per unit because the dictionary
   # it reads (.cspell/project-words.txt) is repository-wide: a unit resolving a
   # different major could disagree about what the config file even means.
   cspell: ^10.4.1
   dependency-cruiser: ^18.7.2
   happy-dom: ^21.0.4
-  hono: ^4.13.17
   knip: ^6.45.0
-  # The static analysis toolchain. These were literal strings in every
-  # manifest until they drifted (knip sat at 6.32.1 in every unit and 6.32.2 at
-  # the root), which is exactly the failure a catalog exists to prevent: a lint
-  # or type rule that fires in CI and not on a developer's machine is worse than
-  # the rule being off. oxlint and oxlint-tsgolint in particular have to move
-  # together — tsgolint is the type-aware backend oxlint shells out to.
-  oxfmt: ^0.75.0
-  oxlint: 1.90.0
-  oxlint-tsgolint: ^7.0.2006
   react: ^19.3.1
   react-aria-components: ^1.22.1
   react-dom: ^19.3.1
@@ -158,14 +127,14 @@ catalog:
   # installs. Every unit declares `typescript: catalog:` explicitly rather than
   # leaning on root hoisting, so an extracted unit still resolves a compiler.
   typescript: ^7.0.2
-  # The build tool for every deployment unit — the two apex Hono Workers and the
-  # fifteen TanStack Start frames. It is a devDependency everywhere it appears
-  # and must stay one — nothing Vite ships may reach a Worker bundle, which is
+  # The build tool for both TanStack Start Core Workers. It is a devDependency
+  # in each Core package and must stay one — nothing Vite ships may reach a Worker bundle, which is
   # the property `pnpm --dir <unit> run build` then inspecting `dist/` checks.
   #
   # Vitest already resolves a transitive copy of Vite; this entry is the direct,
   # version-pinned one, so the two cannot disagree about which major is in play.
   vite: ^8.3.7
+  vite-plus: ^1.6.0
   # Exact, and equal to '@vitest/coverage-v8' above — see the note there.
   vitest: 5.1.0
   # Floor set by `@cloudflare/vite-plugin`'s peer range (^4.127.0), not chosen

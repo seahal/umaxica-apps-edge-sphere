@@ -1,5 +1,7 @@
 # Plan 006: A development transport over the Workers VPC binding
 
+> Scope note: application-unit transport details below describe the pre-split estate. Sphere keeps tools/vpc-probe as a separate diagnostic; the two Core packages do not use Workers VPC.
+
 ## Status: Implemented and verified end to end
 
 > **AMENDED 2026-09-05 — the resource identifiers below are historical.** The
@@ -732,7 +734,7 @@ a top-level `vpc_services` they open a remote proxy session and fail under an AP
 token. Run them the way `preview:vpc` is already run:
 
 ```bash
-CLOUDFLARE_API_TOKEN= pnpm --filter umaxica-apps-edge-app-core run deploy
+CLOUDFLARE_API_TOKEN= pnpm --filter umaxica-apps-edge-sphere-app-core run deploy
 ```
 
 with an OAuth session present. Note that `wrangler` loads the repo-root `.env`

@@ -12,18 +12,18 @@
  * Consumed only by `src/worker.ts`, which is the first code the Workers
  * runtime invokes for every request — before any application code runs.
  */
-import { withSecurityHeaders } from '../security-headers';
-import { canonicalizeClientIdentity, readClientIp } from './client-ip';
-import { prepareRailsBody } from './rails-body-limit';
+import { withSecurityHeaders } from "../security-headers";
+import { canonicalizeClientIdentity, readClientIp } from "./client-ip";
+import { prepareRailsBody } from "./rails-body-limit";
 import {
   classifyRailsRouteClass,
   logRailsDispatch,
   normalizeRailsMethod,
-} from './rails-dispatch-log';
-import { parseRailsOrigin } from './rails-origin';
-import { normalizeEdgeEnvironment } from './request-log';
+} from "./rails-dispatch-log";
+import { railsOriginForHostname } from "./rails-origin";
+import { normalizeEdgeEnvironment } from "./request-log";
 
-export type PathOwnership = 'rails' | 'blocked' | 'next';
+export type PathOwnership = "rails" | "blocked" | "next";
 
 /*
  * WHERE THIS TABLE COMES FROM, AND WHERE IT INTENTIONALLY DISAGREES WITH RAILS.
@@ -58,7 +58,7 @@ export type PathOwnership = 'rails' | 'blocked' | 'next';
  */
 
 // Prefix match unless noted otherwise.
-const RAILS_OWNED_PREFIXES = ['/api/v0/', '/web/v0/', '/edge/v0/', '/oidc/'];
+const RAILS_OWNED_PREFIXES = ["/api/v0/", "/web/v0/", "/edge/v0/", "/oidc/"];
 
 /*
  * Exact match only — an allow-list, never a prefix.
@@ -78,12 +78,12 @@ const RAILS_OWNED_PREFIXES = ['/api/v0/', '/web/v0/', '/edge/v0/', '/oidc/'];
  * because neither is a URL a human types or a browser rewrites.
  */
 const RAILS_OWNED_EXACT = new Set([
-  '/sign/out',
-  '/sign/out/',
-  '/sign/out/complete',
-  '/sign/out/complete/',
-  '/.well-known/jwks.json',
-  '/csp-violation-report',
+  "/sign/out",
+  "/sign/out/",
+  "/sign/out/complete",
+  "/sign/out/complete/",
+  "/.well-known/jwks.json",
+  "/csp-violation-report",
 ]);
 
 /*
@@ -96,12 +96,12 @@ const RAILS_OWNED_EXACT = new Set([
  * every other `/health/…` path, including Rails' `*.json` probes, still 404s
  * before either Rails or the application is invoked.
  */
-const BLOCKED_PREFIX = '/health/';
+const BLOCKED_PREFIX = "/health/";
 
 const APPLICATION_HEALTH_PROBES = new Set([
-  '/health/startups',
-  '/health/livenesses',
-  '/health/readinesses',
+  "/health/startups",
+  "/health/livenesses",
+  "/health/readinesses",
 ]);
 
 /*
@@ -116,12 +116,12 @@ function matchesPrefix(pathname: string, prefix: string): boolean {
   return pathname === withoutTrailingSlash || pathname.startsWith(prefix);
 }
 
-const EDGE_SELF_HEALTH_API = '/api/v0/health.json';
-const EDGE_REVISION_API = '/api/v0/revision.json';
+const EDGE_SELF_HEALTH_API = "/api/v0/health.json";
+const EDGE_REVISION_API = "/api/v0/revision.json";
 
 export function classifyCorePath(pathname: string): PathOwnership {
   if (pathname.startsWith(BLOCKED_PREFIX)) {
-    return APPLICATION_HEALTH_PROBES.has(pathname) ? 'next' : 'blocked';
+    return APPLICATION_HEALTH_PROBES.has(pathname) ? "next" : "blocked";
   }
   /*
    * Edge self-health is machine JSON for THIS Worker. The rest of `/api/v0/`
@@ -129,24 +129,24 @@ export function classifyCorePath(pathname: string): PathOwnership {
    * that document is consumed privately by `rails-health.ts`, never here.
    */
   if (pathname === EDGE_SELF_HEALTH_API || pathname === EDGE_REVISION_API) {
-    return 'next';
+    return "next";
   }
   if (RAILS_OWNED_EXACT.has(pathname)) {
-    return 'rails';
+    return "rails";
   }
   if (RAILS_OWNED_PREFIXES.some((prefix) => matchesPrefix(pathname, prefix))) {
-    return 'rails';
+    return "rails";
   }
-  return 'next';
+  return "next";
 }
 
 export function blockedCoreResponse(): Response {
   return new Response(null, {
     status: 404,
     headers: {
-      'Cache-Control': 'no-store, no-cache, must-revalidate',
-      'Content-Type': 'text/plain; charset=utf-8',
-      'X-Robots-Tag': 'noindex, nofollow',
+      "Cache-Control": "no-store, no-cache, must-revalidate",
+      "Content-Type": "text/plain; charset=utf-8",
+      "X-Robots-Tag": "noindex, nofollow",
     },
   });
 }
@@ -160,18 +160,18 @@ export function blockedCoreResponse(): Response {
  * where it is not attacker-visible.
  */
 function railsUnavailableResponse(
-  reason: 'not-configured' | 'upstream' | 'timeout',
+  reason: "not-configured" | "upstream" | "timeout",
   isProduction: boolean,
 ): Response {
   // Fail closed, visibly — same principle as `getRailsClient()` returning
   // `null`. Never falls through to the application, never silently succeeds against
   // a dev resource in production.
   const body =
-    reason === 'not-configured'
-      ? 'Rails transport not configured'
-      : reason === 'timeout'
-        ? 'Rails upstream timeout'
-        : 'Rails upstream unavailable';
+    reason === "not-configured"
+      ? "Rails transport not configured"
+      : reason === "timeout"
+        ? "Rails upstream timeout"
+        : "Rails upstream unavailable";
 
   // `Content-Type` is stated rather than left off. A body with no declared type
   // is a body the browser is free to sniff, and this one is served on the same
@@ -182,11 +182,11 @@ function railsUnavailableResponse(
   // while a real Rails response passes through untouched.
   return withSecurityHeaders(
     new Response(body, {
-      status: reason === 'timeout' ? 504 : 503,
+      status: reason === "timeout" ? 504 : 503,
       headers: {
-        'Cache-Control': 'no-store, no-cache, must-revalidate',
-        'Content-Type': 'text/plain; charset=utf-8',
-        'X-Robots-Tag': 'noindex, nofollow',
+        "Cache-Control": "no-store, no-cache, must-revalidate",
+        "Content-Type": "text/plain; charset=utf-8",
+        "X-Robots-Tag": "noindex, nofollow",
       },
     }),
     isProduction,
@@ -202,16 +202,16 @@ function railsUnavailableResponse(
  * agree on the identity of that constructor, and the name is stable in both.
  */
 function isTimeoutError(error: unknown): boolean {
-  if (typeof error !== 'object' || error === null || !('name' in error)) return false;
+  if (typeof error !== "object" || error === null || !("name" in error)) return false;
   const name: unknown = error.name;
-  return name === 'TimeoutError' || name === 'AbortError';
+  return name === "TimeoutError" || name === "AbortError";
 }
 
 /**
  * Why a Rails-owned request was refused before it reached Rails. Both are the
  * request's own fault, so both answer 4xx rather than the 5xx family above.
  */
-type RailsBodyRefusal = 'too-large' | 'invalid-length';
+type RailsBodyRefusal = "too-large" | "invalid-length";
 
 /**
  * Edge's own document for a body Edge would not relay.
@@ -222,15 +222,15 @@ type RailsBodyRefusal = 'too-large' | 'invalid-length';
  */
 function railsBodyRefusedResponse(reason: RailsBodyRefusal, isProduction: boolean): Response {
   const [status, body] =
-    reason === 'too-large' ? [413, 'Payload Too Large\n'] : [400, 'Bad Request\n'];
+    reason === "too-large" ? [413, "Payload Too Large\n"] : [400, "Bad Request\n"];
 
   return withSecurityHeaders(
     new Response(body, {
       status,
       headers: {
-        'Cache-Control': 'no-store, no-cache, must-revalidate',
-        'Content-Type': 'text/plain; charset=utf-8',
-        'X-Robots-Tag': 'noindex, nofollow',
+        "Cache-Control": "no-store, no-cache, must-revalidate",
+        "Content-Type": "text/plain; charset=utf-8",
+        "X-Robots-Tag": "noindex, nofollow",
       },
     }),
     isProduction,
@@ -244,7 +244,8 @@ function railsBodyRefusedResponse(reason: RailsBodyRefusal, isProduction: boolea
  * header the browser sent — Cookie, Origin, Referer, CSRF headers,
  * content-type, accept, user-agent, conditional/cache headers — verbatim.
  *
- * The request is built against `RAILS_ORIGIN`, so `Host` is the Rails host.
+ * The request is built against the configured origin for the request's host
+ * region, so `Host` is the selected Rails host.
  * `host` is a forbidden header name under the Fetch standard, so the URL is the
  * only thing that can set it.
  *
@@ -266,33 +267,33 @@ function buildRailsRequest(
   const target = new URL(incomingUrl.pathname + incomingUrl.search, origin);
   const headers = new Headers(request.headers);
   for (const name of [...headers.keys()]) {
-    if (name.startsWith('x-forwarded-')) {
+    if (name.startsWith("x-forwarded-")) {
       headers.delete(name);
     }
   }
   canonicalizeClientIdentity(headers, clientIp);
-  headers.delete('x-request-id');
-  if (requestId !== undefined) headers.set('x-request-id', requestId);
+  headers.delete("x-request-id");
+  if (requestId !== undefined) headers.set("x-request-id", requestId);
 
-  const hasBody = request.method !== 'GET' && request.method !== 'HEAD' && preparedBody !== null;
+  const hasBody = request.method !== "GET" && request.method !== "HEAD" && preparedBody !== null;
 
   return new Request(target, {
     method: request.method,
     headers,
     body: hasBody ? preparedBody : null,
-    redirect: 'manual',
+    redirect: "manual",
     // Carried on the Request rather than passed as a second argument to
     // `fetch()`: an init object makes the runtime rebuild the Request, and
     // rebuilding one whose body is a half-duplex stream is exactly what this
     // dispatch must not do. `fetch()` honours `request.signal`.
     signal: AbortSignal.timeout(RAILS_DISPATCH_TIMEOUT_MS),
-    ...(hasBody ? ({ duplex: 'half' } as { duplex: 'half' }) : {}),
+    ...(hasBody ? ({ duplex: "half" } as { duplex: "half" }) : {}),
   });
 }
 
 /**
- * Dispatches a Rails-owned browser request to `RAILS_ORIGIN` over the public
- * internet.
+ * Dispatches a Rails-owned browser request to the configured regional Rails
+ * origin over the public internet.
  *
  * Never calls into the application — not on success and not on any failure.
  * When Rails answers, its response is returned unchanged (status, `Location`,
@@ -308,11 +309,9 @@ function buildRailsRequest(
  */
 export async function dispatchToRails(
   request: Request,
-  // `RAILS_ORIGIN` is intentionally absent from the current wrangler config,
-  // so generated `CloudflareEnv` has no property in common with an optional
-  // `RAILS_ORIGIN` shape. Read the future binding defensively until a tier
-  // actually declares it; this keeps the production fail-closed behavior and
-  // avoids a type assertion at the Worker boundary.
+  // No current Wrangler tier declares regional Rails origins, so generated
+  // `CloudflareEnv` has no properties for them. Read the future bindings
+  // defensively until a tier actually declares them.
   env: unknown,
   isProduction: boolean,
   requestId?: string,
@@ -322,49 +321,45 @@ export async function dispatchToRails(
   const method = normalizeRailsMethod(request.method);
   const startedAt = Date.now();
   const environment =
-    typeof env === 'object' && env !== null && 'EDGE_ENV' in env
-      ? normalizeEdgeEnvironment(Reflect.get(env, 'EDGE_ENV'))
-      : 'unknown';
+    typeof env === "object" && env !== null && "EDGE_ENV" in env
+      ? normalizeEdgeEnvironment(Reflect.get(env, "EDGE_ENV"))
+      : "unknown";
   const logContext = (status: number) =>
     requestId === undefined
       ? {}
-      : { request_id: requestId, service: 'core' as const, environment, status };
+      : { request_id: requestId, service: "core" as const, environment, status };
 
   /*
    * The body ceiling is answered BEFORE the origin is read, deliberately.
    *
    * A body Edge will not relay is refused whatever the tier is configured to do
-   * with it: an unconfigured `RAILS_ORIGIN` must not turn a 413 into a 503 and
+   * with it: an unconfigured regional Rails origin must not turn a 413 into a 503 and
    * so make the ceiling conditional on deployment state. It is also the cheaper
    * check, and the only one that can stop an upload.
    */
   const prepared = prepareRailsBody(request);
-  if (prepared.kind !== 'ok') {
-    const status = prepared.kind === 'too-large' ? 413 : 400;
+  if (prepared.kind !== "ok") {
+    const status = prepared.kind === "too-large" ? 413 : 400;
     logRailsDispatch({
       route_class: routeClass,
       method,
-      outcome: prepared.kind === 'too-large' ? 'request_too_large' : 'request_invalid_length',
+      outcome: prepared.kind === "too-large" ? "request_too_large" : "request_invalid_length",
       duration_ms: Date.now() - startedAt,
       ...logContext(status),
     });
     return railsBodyRefusedResponse(prepared.kind, isProduction);
   }
 
-  const railsOrigin =
-    typeof env === 'object' && env !== null && 'RAILS_ORIGIN' in env
-      ? Reflect.get(env, 'RAILS_ORIGIN')
-      : undefined;
-  const origin = parseRailsOrigin(railsOrigin);
+  const origin = railsOriginForHostname(env, incomingUrl.hostname);
   if (origin === null) {
     logRailsDispatch({
       route_class: routeClass,
       method,
-      outcome: 'origin_not_configured',
+      outcome: "origin_not_configured",
       duration_ms: Date.now() - startedAt,
       ...logContext(503),
     });
-    return railsUnavailableResponse('not-configured', isProduction);
+    return railsUnavailableResponse("not-configured", isProduction);
   }
 
   const railsRequest = buildRailsRequest(request, incomingUrl, origin, requestId, prepared.body);
@@ -374,11 +369,11 @@ export async function dispatchToRails(
     logRailsDispatch({
       route_class: routeClass,
       method,
-      outcome: 'request_too_large',
+      outcome: "request_too_large",
       duration_ms: Date.now() - startedAt,
       ...logContext(413),
     });
-    return railsBodyRefusedResponse('too-large', isProduction);
+    return railsBodyRefusedResponse("too-large", isProduction);
   };
 
   let response: Response;
@@ -395,11 +390,11 @@ export async function dispatchToRails(
     logRailsDispatch({
       route_class: routeClass,
       method,
-      outcome: isTimeoutError(error) ? 'timeout' : 'upstream_unreachable',
+      outcome: isTimeoutError(error) ? "timeout" : "upstream_unreachable",
       duration_ms: Date.now() - startedAt,
       ...logContext(isTimeoutError(error) ? 504 : 503),
     });
-    return railsUnavailableResponse(isTimeoutError(error) ? 'timeout' : 'upstream', isProduction);
+    return railsUnavailableResponse(isTimeoutError(error) ? "timeout" : "upstream", isProduction);
   }
 
   if (bodyState.exceeded) {
@@ -415,7 +410,7 @@ export async function dispatchToRails(
     method,
     // 3xx counts as Rails answering normally — `/sign/out` and `/oidc/callback`
     // both redirect on their happy path.
-    outcome: response.status < 400 ? 'rails_ok' : 'rails_http_error',
+    outcome: response.status < 400 ? "rails_ok" : "rails_http_error",
     duration_ms: Date.now() - startedAt,
     upstream_status: response.status,
     ...logContext(response.status),

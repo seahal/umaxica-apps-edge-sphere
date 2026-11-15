@@ -1,13 +1,18 @@
 # Plan 005: Rails ↔ Edge connectivity over a Cloudflare Workers VPC binding
 
+> Scope note: the public content packages described here moved to Press. The
+> retained `app/core` and `org/core` use regional public fetch under ADR 018.
+> Sphere keeps `tools/vpc-probe` as a separate VPC diagnostic.
+
 ## Status: Completed
 
 ## Supersedes
 
 ADR 001 (`001-rails-health-check.md`). That record describes a `RAILS_API_URL`
 environment variable, a plain `fetch`, and a `shared/apex/routes/health.ts`
-module. None of those exist any more: `RAILS_*` variables appear nowhere in the
-repository, and a `shared/` directory is explicitly forbidden by `CLAUDE.md`.
+module. That retired flow is no longer in use; the retained Core origins are
+region-keyed as recorded in ADR 018. A `shared/` directory is explicitly
+forbidden by the repository's package boundary.
 
 ## Problem
 

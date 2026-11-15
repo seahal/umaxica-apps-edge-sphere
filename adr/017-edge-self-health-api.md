@@ -1,5 +1,7 @@
 # ADR 017: Edge self-health machine API
 
+> Current Sphere scope is app/core and org/core. Hono Apex and public content implementations moved to their owning repositories.
+
 ## Status: Implemented
 
 Amends [ADR 016](016-rails-machine-health-api.md) by adding the **Edge**

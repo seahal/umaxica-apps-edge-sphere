@@ -7,4 +7,5 @@
 # closed — Rails-owned paths answer 503 and `/health` reports Rails as not configured,
 # which is what `pnpm test:api`, Playwright and CI expect. See
 # adr/018-core-rails-direct-internet.md.
-# RAILS_ORIGIN=http://core.org.localhost:3000
+# RAILS_REGION=jp
+# RAILS_ORIGIN_JP=http://core.org.localhost:3000

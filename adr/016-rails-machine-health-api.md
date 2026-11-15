@@ -1,5 +1,9 @@
 # ADR 016: Edge verifies Rails through the machine-facing Health API
 
+> Current Sphere Cores (`app/core`, `org/core`) verify Rails over public fetch
+> using the request's regional origin. The VPC transport details below describe
+> the pre-split estate; `tools/vpc-probe` remains a separate diagnostic.
+
 ## Status: Implemented — required fields extended, see [Amendment 2026-09-06](#amendment-2026-09-06-timestamp-is-required-namespace-is-additive)
 
 Amends [ADR 009](009-rails-health-entrypoint-and-dispatch-operability.md)
@@ -29,13 +33,14 @@ response is not a health pass; a health pass is not a revision match.
 
 ## Decision
 
-1. Every Rails-backed frame verifies Rails over Workers VPC with
-   `GET /api/v0/health.json` on that frame's existing `PRIVATE_RAILS_ORIGIN`.
-   The path has no frame prefix. Workers VPC topology, the Host header, and the
-   one-Service-for-fifteen-frames arrangement do not change.
+1. The retained Core packages verify Rails with `GET /api/v0/health.json` at
+   the origin selected for the request's `jp` or `us` region. The path has no
+   frame prefix. Core requests use ordinary public `fetch`, not Workers VPC.
+   `tools/vpc-probe` independently retains VPC diagnostics for Press-owned
+   Rails hosts.
 
-2. The consumer is `src/lib/rails-health.ts` (`checkRailsHealth`), copied
-   byte-identically across the fifteen frames. It validates HTTP status,
+2. The Core consumer is `src/lib/rails-health.ts` (`checkRailsHealth`), kept
+   byte-identical across the two Core packages. It validates HTTP status,
    `application/json` (parameters such as `charset=utf-8` allowed), JSON parse,
    required fields, and the `pass`/`warn`/`fail` vocabulary. Additive unknown
    fields and extra checks are ignored. Required-field absence, wrong types,
@@ -45,7 +50,7 @@ response is not a health pass; a health pass is not a revision match.
    Context section above it.
 
 3. Transport outcomes stay distinct from service health:
-   `not-configured`, `unreachable` (including Workers VPC `ProxyError:`),
+   `not-configured`, `unreachable`,
    `http-error`, `invalid-contract`, `pass`, `warn`, `fail`. A `503` JSON
    document with `status=fail` means Rails was reached and is unhealthy, not
    that the hop failed.
@@ -57,9 +62,9 @@ response is not a health pass; a health pass is not a revision match.
    transport/contract failure to Edge readiness `error`. Startup and liveness
    stay isolate-only.
 
-5. Apex workers stay Rails-blind. Kubernetes on the Rails cluster may keep
-   hitting Rails operational probes; this record is only the Edge → Workers VPC
-   → Rails machine path.
+5. The Apex Workers moved to Zenith and remain outside this repository's Core
+   health contract. Kubernetes on the Rails cluster may keep hitting Rails
+   operational probes; this ADR records the Core-to-Rails machine path.
 
 ## Consequences
 
@@ -119,14 +124,18 @@ transport-level gate. Proving identity is a diagnostic the operator runs, not a
 per-request check the Worker pays for on the hot path. Making the Worker
 enforce it would be a decision, and is not this one.
 
-## Outcome
+## Current Sphere outcome
 
-Implemented in this repository: fifteen `rails-health.ts` copies and TanStack
-`/health` plus `/health/readinesses` routes, repository invariants in
-`test/rails-connection-invariants.test.ts`, and local `scripts/check-rails`.
+The decision is implemented in the two retained Core packages with matching
+`rails-health.ts` consumers and `/health` plus `/health/readinesses` routes.
+The Rails origin is selected by the request's region and uses public `fetch`;
+neither Core declares a Workers VPC binding. `scripts/check-rails` remains the
+local operator check.
 
-The 2026-09-06 amendment above is implemented too: `timestamp` is enforced by
-the fifteen copies, by `scripts/check-rails`, and by the `VPC contract` gate in
-`tools/verify-edge-connectivity.mjs`, with the three pinned against each other
-in `test/rails-connection-invariants.test.ts`. Recorded in
+## Historical pre-split outcome
+
+The 2026-09-06 amendment was implemented across the then-current Edge estate:
+`timestamp` was enforced by fifteen copies, `scripts/check-rails`, and the VPC
+contract gate in `tools/verify-edge-connectivity.mjs`, pinned by
+`test/rails-connection-invariants.test.ts`. Its evidence is
 `evidence/2026-09-06-rails-health-contract-checkers.md`.

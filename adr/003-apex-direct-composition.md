@@ -1,5 +1,7 @@
 # Plan 003: Migrate `com/apex`, `org/apex`, `net/apex` to Direct Route Composition
 
+> Superseded: moved to umaxica-apps-edge-zenith. This historical record concerns Apex packages.
+
 > Superseded for app/com/org apex only by [ADR 024](024-retire-app-com-org-apex-units.md). The record below is unchanged history.
 
 ## Status: Completed

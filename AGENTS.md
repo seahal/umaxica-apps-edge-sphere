@@ -15,120 +15,151 @@ Before editing files for a substantial task:
 
 # AGENTS.md
 
-Edge layer of Umaxica: twelve TanStack Start public content surfaces (`{app,com,org}/{docs,help,info,news}`), three TanStack Start cores, and five apex Hono Workers (`{app,com,org,net,dev}/apex`; app/com/org reintroduced by ADR 027 after ADR 024 retired them). All built with Vite and deployed to Cloudflare Workers. Twenty deployment units, one shared script contract.
+This repository owns two regional TanStack Start Core Workers: `app/core` and
+`org/core`. It also retains the standalone maintenance Worker at `all/busy`
+and the local Workers VPC probe at `tools/vpc-probe`. Core accepts its `jp`
+and `us` public hosts; keep region explicit in host routing and configuration.
+Each Core is built with Vite and deployed to Cloudflare Workers.
 
-## Setup & commands
+## Setup and commands
 
-pnpm is the ONLY package manager. Never use npm, npx, yarn, or bun. `pnpm-lock.yaml` is the only lockfile (`test/package-manager-invariants.test.ts` enforces this).
+pnpm is the ONLY package manager. Never use npm, npx, yarn, or bun.
+`pnpm-lock.yaml` is the only lockfile (`test/package-manager-invariants.test.ts`
+enforces this).
 
-- Install: `pnpm install` (run after every pull, before starting work)
-- All static checks + unit tests: `pnpm run check`
-- Format: `pnpm run format` / `pnpm run format:check` (Oxfmt)
-- Lint: `pnpm run lint` / `pnpm run lint:types` (Oxlint; only `lint:fix` rewrites code)
-- Type check: `pnpm run typecheck` (tsc)
-- Unit tests: `pnpm run test` (Vitest). Coverage is per-unit (`pnpm --dir <unit> run test:cov`); the root invariant suite does not measure it.
-- HTTP tests: `pnpm run test:api` (Hurl)
-- Browser tests: `pnpm run test:e2e` (Playwright; run `pnpm exec playwright install chromium` first — CI deliberately skips e2e, do not "fix" that)
-- Build: `pnpm run build` (`vite build` in all twenty units; the fifteen React units add `tanstackStart()` + `viteReact()`, apex is plain Hono)
-- Bundle budget: `pnpm run check:size` (requires `pnpm run build` first; NOT part of `check:static`)
-- Dead code: `pnpm run knip` · Architecture: `pnpm run check:architecture` · Version sync: `pnpm run check:deps` (`fix:deps` is local-only) · Spelling: `pnpm run check:spelling`
-- Per-unit: `pnpm --filter <workspace> run <script>` or `pnpm --dir <unit> run <script>`
+- Runtime: Node.js 26.13.1; pnpm 12.18.0.
+- Install: `pnpm install`.
+- Static checks and unit tests: `pnpm run check`.
+- Format: `pnpm run format` / `pnpm run format:check` (Vite+ `vp fmt`).
+- Lint: `pnpm run lint` fixes; `pnpm run lint:check` checks without rewriting
+  (Vite+ `vp lint`).
+- Type check: `pnpm run typecheck` (`tsc --noEmit`, after local generation).
+- Unit tests: `pnpm run test` (Vite+ Vitest). Coverage is per Core package
+  (`pnpm --dir <unit> run test:cov`).
+- HTTP tests: `pnpm run test:api` (Hurl).
+- Browser tests: `pnpm run test:e2e` (Playwright; install Chromium with
+  `pnpm exec playwright install chromium` when needed; CI deliberately skips
+  browser tests).
+- Build: `pnpm run build` builds both Core Workers with Vite.
+- Dead code: `pnpm run knip`; architecture: `pnpm run check:architecture`;
+  dependency versions: `pnpm run check:deps`; spelling:
+  `pnpm run check:spelling`.
+- Per package: `pnpm --filter <workspace> run <script>` or
+  `pnpm --dir <unit> run <script>`.
 
-Root scripts are `pnpm -r` fan-outs over identical per-unit scripts; every unit runs standalone from its own directory. Exceptions that run once from the root: `check:architecture`, `check:deps`, `check:spelling`.
+The root fans out over the two Core packages. Repository-only checks run once
+from the root: `check:architecture`, `check:deps`, `check:spelling`,
+`check:workers`, and the root invariant suite in `test/`.
 
-Root-level `vitest run --dir test` runs only `test/` (repository invariants). There is no root `vitest.config.ts`. A unit's tests live in `<unit>/test/` and run via `pnpm --dir <unit> run test`. Import test utilities from `vitest` directly, never a wrapper.
+Root `pnpm run test:repo` runs only `test/`; it does not use a root Vitest
+configuration. Package tests live in `<unit>/test/` and use that package's
+Vitest configuration. Import test utilities from `vitest` directly.
 
-Before adding a suppression/ignore to any static-analysis tool, read `docs/development/static-analysis-and-hygiene.md` (normative).
+Before adding a suppression or ignore to a static-analysis tool, read
+`docs/development/static-analysis-and-hygiene.md`.
 
-## Per-unit config — do not centralize
+## Per-package configuration
 
-Each deployment unit owns its own `.oxlintrc.json`, `.oxfmtrc.json`, `tsconfig.json`, `vitest.config.ts`, `vitest.setup.ts`, and `knip.jsonc`. Never replace a unit's copy with a root `extends` or shared package (`test/deployment-unit-boundaries.test.ts` enforces this). Root `.oxlintrc.json`, `.oxfmtrc.json`, and `tsconfig.json` apply to repo-level files only.
+Each Core owns its own `.oxlintrc.json`, `.oxfmtrc.json`, `tsconfig.json`,
+`vitest.config.ts`, `vitest.setup.ts`, and `knip.jsonc`. Do not replace a
+package's copy with a root `extends` or shared package. Root configs apply only
+to repository-level files.
 
-## Build & deploy
+## Build and deploy
 
-`vite build` produces the deployed Worker bundle and hashed assets — it builds for production, not just dev. Vite is a devDependency because it doesn't run _in_ production; CI cannot drop the build step. Production starts no Node process and no server. `adr/012-apex-vite-build-and-static-assets.md` is normative.
+`vite build` produces each deployed Worker bundle and hashed assets. Vite is a
+devDependency; production starts no Node process or server. The deployment
+contract is recorded in `adr/013-frames-tanstack-start.md` and
+`adr/026-tanstack-start-stable-caret-range.md`.
 
-## Test layers — placement by assertion, not by tool capability
+Do not rename a kept Worker's name, routes, bindings, rate-limit namespace,
+secrets, or Wrangler environments as part of repository maintenance.
 
-| Layer           | Tool       | Lives in       | Answers                            |
-| --------------- | ---------- | -------------- | ---------------------------------- |
-| `pnpm test`     | Vitest     | `<unit>/test/` | did the internal logic break?      |
-| `pnpm test:api` | Hurl       | `<unit>/api/`  | did the HTTP contract break?       |
-| `pnpm test:e2e` | Playwright | `<unit>/e2e/`  | did the user's browser path break? |
+## Test layers
 
-- Assertion on a **response** (status, headers, body, cookies, redirects) → `.hurl` file against a real server. Must NOT import from `src/` or call `app.request()`.
-- Assertion **no HTTP client can produce** (a route that throws, injected `RATE_LIMITER`, a Workers binding, a `console` line) → Vitest. `app.request()` is allowed only as the driver — say so in a comment.
-- Assertion needing a **real engine** (rendering, accessibility tree, service worker, offline) → Playwright. Status codes and `Content-Type` never belong in a `.spec.ts`.
-- Duplicating a behaviour across layers is allowed only when each layer fails for a different reason (e.g. auth flow in Hurl + JWT parser in Vitest + login screen in Playwright). The same `GET /health → 200` in all three is not.
+| Layer           | Tool       | Lives in       | Answers                      |
+| --------------- | ---------- | -------------- | ---------------------------- |
+| `pnpm test`     | Vitest     | `<unit>/test/` | Did internal logic break?    |
+| `pnpm test:api` | Hurl       | `<unit>/api/`  | Did the HTTP contract break? |
+| `pnpm test:e2e` | Playwright | `<unit>/e2e/`  | Did the browser path break?  |
 
-`test:api` self-hosts: each unit's `api/run.mjs` spawns `pnpm run dev`, runs Hurl, stops it; it reuses an already-listening server. `EDGE_API_BASE` targets a deployment instead. See each unit's `api/README.md`.
-
-All twenty units implement the same contract, including `dev/apex`; none is exempt.
+- Assertions on responses (status, headers, body, cookies, redirects) belong in
+  `.hurl` files against a real server. Do not import `src/` or call
+  `app.request()` from those tests.
+- Assertions no HTTP client can produce (a thrown route, injected binding, or
+  `console` line) belong in Vitest. `app.request()` may be the driver when a
+  comment explains why.
+- Assertions needing a real browser engine belong in Playwright. Status codes
+  and content types do not belong in browser specs.
+- `test:api` starts each package's dev server through `api/run.mjs`, runs Hurl,
+  then stops the server; it reuses an already-listening server. `EDGE_API_BASE`
+  targets a deployment.
 
 ## Evidence
 
-Completed tests, validations, verifications, audits, security checks and
-performance checks leave a short record in `evidence/` when retaining the result
-is useful. Records describe work that was actually performed — never plans,
-intentions, or unverified claims. A check that could not be completed is
-recorded as such, with the reason and whatever was observed.
+Completed checks leave a short record in `evidence/` when retaining the result
+is useful. Records describe work actually performed, never plans or unverified
+claims. Record checks that could not complete with their reason and observed
+result.
 
-- `evidence/` is flat; no subdirectories.
-- Only `.md` files.
-- `YYYY-MM-DD-<topic>.md`, ISO date, lowercase hyphenated topic.
-- No raw logs, screenshots, binaries, archives, dumps, generated reports or
-  other large artifacts. Summarize them, and cite the commands, identifiers,
-  hashes, measurements and excerpts that carry the result.
-- Enforced by `pnpm run test` (`test/evidence-layout.test.ts`).
+- `evidence/` is flat and contains only `.md` files.
+- Name records `YYYY-MM-DD-<topic>.md` with lowercase hyphenated topics.
+- Do not add raw logs, screenshots, binaries, archives, dumps, or generated
+  reports. Summarize commands, identifiers, hashes, measurements, and excerpts.
 
 ## Logging
 
-`no-console` is an **error** in every unit. Never call `console` directly or add a new disable comment. The sanctioned emitters are closed, typed surfaces:
+`no-console` is an error in both Core packages. Do not call `console` directly
+or add a new disable comment. The sanctioned emitters are:
 
-- `*/apex/src/structured-logger.ts` — `@hono/structured-logger` middleware, wired in `create-apex-app.ts`
-- `*/{core,docs,help,info,news}/src/lib/request-log.ts` — the one completion emitter for each TanStack request boundary. These are local copies so every deployment unit remains standalone.
-- `*/core/src/lib/rails-dispatch-log.ts` — the Edge → Rails hop (public internet, `RAILS_ORIGIN`)
+- `*/core/src/lib/request-log.ts` for the TanStack request boundary.
+- `*/core/src/lib/rails-dispatch-log.ts` for the Edge-to-Rails hop.
 
-All emit one JSON line `{ level, msg, data }`, collected by `observability.logs.enabled` in each `wrangler.jsonc`. No external observability vendor; adding one is a decision, not a detail.
-
-`RailsDispatchLogEntry` has no free-text field by design — every value is a number or a fixed union, so secrets (cookies, tokens, bodies, user ids, hostnames) cannot leak into a log line. Add new fields as closed unions; never widen one to `string`.
+Each emits one JSON line `{ level, msg, data }`, collected by
+`observability.logs.enabled` in each `wrangler.jsonc`. Keep log values numeric
+or fixed unions; never add free text, secrets, cookies, tokens, bodies, user
+identifiers, or hostnames.
 
 ## Cookies
 
-Browser code touches cookies ONLY via the Cookie Store API (`cookieStore`). No cookie library, no `document.cookie`, no wrapper module before a feature needs one. Server side is unaffected: Hono's `hono/cookie`, the apex `languageDetector`, and Rails cookies all stay as they are.
+Browser code touches cookies only through the Cookie Store API (`cookieStore`).
+Do not add a cookie library, `document.cookie`, or a wrapper before a feature
+needs one. Server-side Hono cookie handling is outside this repository's kept
+runtime surface.
 
-Boundary consequence (ADR 007): `*/core/src/worker.ts` strips every `Set-Cookie` from application responses. Rails-owned passthrough may preserve a Rails `Set-Cookie`; the apex workers and TanStack frames do not issue, refresh or delete preference cookies.
-
-`docs/development/browser-cookie-access.md` is normative — read it before writing any browser cookie code.
+At the Core boundary, `src/worker.ts` strips every `Set-Cookie` from application
+responses. Rails-owned passthrough may preserve a Rails `Set-Cookie`; the Core
+application does not issue, refresh, or delete preference cookies. Read
+`docs/development/browser-cookie-access.md` before writing browser cookie code.
 
 ## Styling
 
-Tailwind CSS v4 is the only styling layer. No CSS Modules, no CSS-in-JS, no `tailwind.config.*`, no static `style=` attribute. `docs/design/ui-shell-contract.md` §3a is normative.
+Tailwind CSS v4 is the only styling layer. Do not add CSS Modules, CSS-in-JS,
+`tailwind.config.*`, or static `style=` attributes.
+`docs/design/ui-shell-contract.md` is normative.
 
-- Each unit owns its own stylesheet with its own `@theme` — no shared preset (enforced by `test/deployment-unit-boundaries.test.ts`).
-- Engine runs via `@tailwindcss/vite`; there is no `postcss.config.mjs` and `@tailwindcss/postcss` is not installed. Vite fingerprints the stylesheet into `dist/client`, which lets `public/_headers` mark `/assets/*` immutable. Each unit names the URL once in `src/assets.ts`.
-- Visual rules are utilities in markup. A new CSS rule needs a written reason a utility can't express it; `@apply` is never that reason. Repeated utility runs become a component, not a class.
-- Design constants are `@theme` tokens; `--color-brand` is the one colour pinned by literal value.
+- Each Core owns its stylesheet and `@theme`; do not add a shared preset.
+- The engine runs through `@tailwindcss/vite`; do not add PostCSS or
+  `@tailwindcss/postcss`.
+- Visual rules belong in utility classes. A new CSS rule needs a written reason
+  utilities cannot express it; `@apply` is not that reason.
+- Design constants are `@theme` tokens; `--color-brand` is the one color
+  pinned by literal value.
 
 ## Generated files
 
-- `cloudflare-env.d.ts` (frames) and `worker-configuration.d.ts` (apex) come from `wrangler types` and are **gitignored — never commit them**. Frames run `cf-typegen` inside `typecheck`; apex workers compile without the file.
-- `src/routeTree.gen.ts` **IS committed** in every frame (regenerated by the TanStack Router plugin on `vite dev`/`vite build`; excluded from Oxfmt, Oxlint, and coverage). Rationale: `adr/013-frames-tanstack-start.md`.
+`cloudflare-env.d.ts` is generated by `wrangler types`, gitignored, and must not
+be committed. `typecheck` generates it before invoking TypeScript.
+`src/routeTree.gen.ts` is committed in each Core and regenerated by the
+TanStack Router plugin on `vite dev` or `vite build`; see ADR 013.
 
 ## Module composition
 
-- Mixin-style modules, shared helpers, and composition utilities MUST stay side-effect-light: mutations, registration, persistence, and I/O are wired explicitly by the caller.
-- Export the smallest surface practical; keep internals unexported unless intentionally part of the consumer-facing API.
+Mixin-style modules, shared helpers, and composition utilities stay
+side-effect-light: mutations, registration, persistence, and I/O are wired
+explicitly by the caller. Export the smallest practical surface.
 
 ## Design principle
 
-YAGNI. Build only what is needed now; no speculative abstractions.
-
-When documentation and existing code conflict, follow the patterns in the existing code and list every discrepancy found in the final response.
-
-## Review checklist
-
-- [ ] `pnpm install` after pulling, before starting.
-- [ ] `pnpm run check` before finishing any change.
-- [ ] `pnpm run build && pnpm run check:size` if the change reaches a browser bundle.
-- [ ] `pnpm run test:api` if the change is client-observable (route, header, redirect, status, rendered document).
+YAGNI. Build only what is needed now. If documentation and existing code
+conflict, follow the code and report every discrepancy found.

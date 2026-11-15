@@ -1,6 +1,6 @@
 # The shared development environment: the Cloudflare Tunnel connector, the
 # networks, the named volumes, and -- behind the `app` profile -- one dev-server
-# service per workspace unit. A fresh `git clone` plus a container engine must be
+# service per Core package. A fresh `git clone` plus a container engine must be
 # enough to start it and to open the Dev Container -- on Ubuntu, and on
 # RHEL/Fedora with SELinux Enforcing, under Docker and under rootless Podman.
 # Nothing here may require a file a clone does not contain, and nothing here may
@@ -13,9 +13,9 @@
 #
 #   podman compose up                  the shared services only. Run the dev
 #                                      servers from wherever you like.
-#   podman compose --profile app up    the above plus the twenty dev servers,
+#   podman compose --profile app up    the above plus the two Core dev servers,
 #                                      one container each. No editor.
-#   Open in Dev Container              the above minus the twenty, plus `core`
+#   Open in Dev Container              the above minus the two, plus `core`
 #                                      from `.devcontainer/compose.yaml` -- a
 #                                      workspace container to attach to, from
 #                                      which you start dev servers by hand.
@@ -32,22 +32,22 @@
 # `.devcontainer/compose.yaml`, `scripts/dev-start` and a bare `podman compose`
 # all resolve to this same name, so they share one set of containers and volumes.
 # An override must repeat it.
-name: umaxica-apps-edge
+name: umaxica-apps-edge-sphere
 
-# The twenty dev servers, one Compose service per workspace unit, WITHOUT the
+# The two Core dev servers, one Compose service per kept package, WITHOUT the
 # Dev Container.
 #
 # `core` (.devcontainer/compose.yaml) and these are the same image and the same
 # workspace bind; they differ only in what PID 1 does. `core` sleeps and waits
-# for an editor to attach, and you start `pnpm --dir com/apex run dev` inside it
+# for an editor to attach, and you start a Core dev server inside it
 # by hand. Each service below instead IS one of those dev servers, so
 #
-#     podman compose --profile app up com-apex
+#     podman compose --profile app up app-core
 #
 # is a complete, editor-free way to work on one unit -- and `--profile app up`
-# with no service named starts all twenty.
+# with no service named starts both.
 #
-# One service per unit rather than one service running all twenty: the units
+# One service per Core rather than one service running both: the units
 # deploy independently, and a `vite dev` that has crashed should be visible and
 # restartable as itself rather than buried in a combined log. The port each one
 # publishes is the port its own `dev` script already binds; `--host` in those
@@ -71,12 +71,12 @@ x-unit: &unit
       CONTAINER_GROUP: edge
   # Dependencies are installed first because, unlike the Dev Container, nothing
   # here runs `postCreateCommand`. `node-volume` is shared with `core`, so
-  # whichever entry point runs first populates it for the others; the twenty
+  # whichever entry point runs first populates it for the others; the two
   # services then find it already installed and `--frozen-lockfile` is a no-op.
   command:
-    - 'sh'
-    - '-lc'
-    - 'pnpm install --frozen-lockfile && exec pnpm run dev'
+    - "sh"
+    - "-lc"
+    - "pnpm install --frozen-lockfile && exec pnpm run dev"
   init: true
   userns_mode: keep-id:uid=1000,gid=1000
   security_opt:
@@ -92,18 +92,18 @@ x-unit: &unit
   # `no`, not `on-failure:N`: the failures a dev server actually hits -- a type
   # error, a bad import, a missing dependency -- are ones a restart repeats.
   # It stays stopped and visible instead.
-  restart: 'no'
+  restart: "no"
   logging:
     driver: json-file
     options:
-      max-size: '10m'
-      max-file: '3'
+      max-size: "10m"
+      max-file: "3"
   # `edge-tunnel` is the cross-repository network Global's `cloudflare-tunnel-edge`
   # connector joins to reach a dev server here. `core` claims the alias
   # `edge.localhost` on it, which is what a Global ingress rule addresses while the
-  # Dev Container is what is running. These twenty carry no alias -- twenty
+  # Dev Container is what is running. Both Core services carry no alias -- both
   # containers cannot share one name -- so against `--profile app` a Global ingress
-  # rule names the unit's own service instead, e.g. `http://com-apex:5101`.
+  # rule names the unit's own service instead, e.g. `http://app-core:5405`.
   networks:
     default: {}
     edge-tunnel: {}
@@ -130,106 +130,16 @@ x-unit: &unit
       volume:
         nocopy: true
 services:
-  com-apex:
-    <<: *unit
-    working_dir: '/home/edge/workspace/com/apex'
-    ports:
-      - '127.0.0.1:5101:5101'
-  com-info:
-    <<: *unit
-    working_dir: '/home/edge/workspace/com/info'
-    ports:
-      - '127.0.0.1:5103:5103'
-  com-core:
-    <<: *unit
-    working_dir: '/home/edge/workspace/com/core'
-    ports:
-      - '127.0.0.1:5105:5105'
-  com-docs:
-    <<: *unit
-    working_dir: '/home/edge/workspace/com/docs'
-    ports:
-      - '127.0.0.1:5106:5106'
-  com-news:
-    <<: *unit
-    working_dir: '/home/edge/workspace/com/news'
-    ports:
-      - '127.0.0.1:5107:5107'
-  com-help:
-    <<: *unit
-    working_dir: '/home/edge/workspace/com/help'
-    ports:
-      - '127.0.0.1:5108:5108'
-  net-apex:
-    <<: *unit
-    working_dir: '/home/edge/workspace/net/apex'
-    ports:
-      - '127.0.0.1:5201:5201'
-  org-apex:
-    <<: *unit
-    working_dir: '/home/edge/workspace/org/apex'
-    ports:
-      - '127.0.0.1:5301:5301'
-  org-info:
-    <<: *unit
-    working_dir: '/home/edge/workspace/org/info'
-    ports:
-      - '127.0.0.1:5303:5303'
   org-core:
     <<: *unit
-    working_dir: '/home/edge/workspace/org/core'
+    working_dir: "/home/edge/workspace/org/core"
     ports:
-      - '127.0.0.1:5305:5305'
-  org-docs:
-    <<: *unit
-    working_dir: '/home/edge/workspace/org/docs'
-    ports:
-      - '127.0.0.1:5306:5306'
-  org-news:
-    <<: *unit
-    working_dir: '/home/edge/workspace/org/news'
-    ports:
-      - '127.0.0.1:5307:5307'
-  org-help:
-    <<: *unit
-    working_dir: '/home/edge/workspace/org/help'
-    ports:
-      - '127.0.0.1:5308:5308'
-  app-apex:
-    <<: *unit
-    working_dir: '/home/edge/workspace/app/apex'
-    ports:
-      - '127.0.0.1:5401:5401'
-  app-info:
-    <<: *unit
-    working_dir: '/home/edge/workspace/app/info'
-    ports:
-      - '127.0.0.1:5403:5403'
+      - "127.0.0.1:5305:5305"
   app-core:
     <<: *unit
-    working_dir: '/home/edge/workspace/app/core'
+    working_dir: "/home/edge/workspace/app/core"
     ports:
-      - '127.0.0.1:5405:5405'
-  app-docs:
-    <<: *unit
-    working_dir: '/home/edge/workspace/app/docs'
-    ports:
-      - '127.0.0.1:5406:5406'
-  app-news:
-    <<: *unit
-    working_dir: '/home/edge/workspace/app/news'
-    ports:
-      - '127.0.0.1:5407:5407'
-  app-help:
-    <<: *unit
-    working_dir: '/home/edge/workspace/app/help'
-    ports:
-      - '127.0.0.1:5408:5408'
-  dev-apex:
-    <<: *unit
-    working_dir: '/home/edge/workspace/dev/apex'
-    ports:
-      - '127.0.0.1:5501:5501'
+      - "127.0.0.1:5405:5405"
 
   # Edge owns this connector and its tunnel. It is intentionally independent from the
   # Global/Rails connector: the two share neither a Podman network nor a tunnel token.
@@ -280,7 +190,7 @@ services:
       # it is actually a requirement: `scripts/dev-start --tunnel` refuses to
       # start without CLOUDFLARED_TOKEN, and cloudflared itself exits non-zero on
       # an empty one, bounded by `restart: on-failure:3`.
-      TUNNEL_TOKEN: '${CLOUDFLARED_TOKEN:-}'
+      TUNNEL_TOKEN: "${CLOUDFLARED_TOKEN:-}"
     restart: on-failure:3
     cpus: 0.5
     mem_limit: 256m
@@ -295,8 +205,8 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: '10m'
-        max-file: '3'
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   # Declared, not merely used. `core` names `default` explicitly (it has to: a

@@ -1,6 +1,9 @@
 # ADR 022: Rate-limit namespaces are per FQDN, with a region suffix
 
-> Superseded for app/com/org apex only by [ADR 024](024-retire-app-com-org-apex-units.md). The record below is unchanged history.
+> The historical allocation below covered the pre-split Edge estate. Sphere now
+> deploys only `app/core` and `org/core`; the other allocations moved with their
+> packages. Current Sphere ids are listed in the operations document linked
+> below.
 
 ## Status
 
@@ -14,6 +17,16 @@ the AUTH `X10N` series remain in force.
 
 The current assignment table lives in
 [`docs/operations/rate-limit-namespace-allocation.md`](../docs/operations/rate-limit-namespace-allocation.md).
+
+## Current Sphere scope (2026-11-15)
+
+Sphere owns `app/core` and `org/core`. Their active Japan `RATE_LIMITER` ids
+remain `540581` and `530581`, respectively; their Wrangler names and tier
+configuration are unchanged. USA suffix `01` remains reserved. The account-wide
+Jump reservation `520900` remains external to this repository.
+
+The rest of this record preserves the allocation decision for the original
+Edge estate as history. It does not make those packages Sphere deployments.
 
 ## Context
 

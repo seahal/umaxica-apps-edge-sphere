@@ -1,19 +1,18 @@
-import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
-import { dirname, join, relative, resolve, sep } from 'node:path';
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join, relative, resolve, sep } from "node:path";
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 
-const repoRoot = join(import.meta.dirname, '..');
+const repoRoot = join(import.meta.dirname, "..");
 
 /**
  * The single owner of the "no deployment unit imports another deployment unit"
  * invariant. Neither of the two obvious homes can hold it:
  *
  * - `.oxlintrc.json` matches import SPECIFIER text, so it cannot tell
- *   `app/core -> app/docs` (written `../../../docs/...`) from a legitimate
- *   within-unit `src/app/docs/...` reference. Unit names — core, docs, info,
- *   news, help — are ordinary directory names inside a unit, so any pattern
+ *   `app/core -> org/core` (written `../../../org/core/...`) from a legitimate
+ *   within-unit `src/app/docs/...` reference. The name `core` is also an ordinary directory name inside a unit, so any pattern
  *   broad enough to catch the first also rejects the second.
  * - `.dependency-cruiser.cjs` COULD express it exactly, on resolved paths with
  *   backreferences, but depcruise needs TypeScript's programmatic API and
@@ -28,23 +27,23 @@ const repoRoot = join(import.meta.dirname, '..');
  */
 
 function trackedFiles(): string[] {
-  const injected = process.env['EDGE_TRACKED_FILES'];
+  const injected = process.env["EDGE_TRACKED_FILES"];
   if (injected !== undefined) {
-    return injected.split('\n').filter(Boolean);
+    return injected.split("\n").filter(Boolean);
   }
-  return execFileSync('git', ['ls-files'], { cwd: repoRoot, encoding: 'utf8' })
-    .split('\n')
+  return execFileSync("git", ["ls-files"], { cwd: repoRoot, encoding: "utf8" })
+    .split("\n")
     .filter(Boolean);
 }
 
 /** The deployment units, read from the mechanical source of truth. */
 function deploymentUnits(): string[] {
-  const workspaces = readFileSync(join(repoRoot, 'pnpm-workspace.yaml'), 'utf8');
+  const workspaces = readFileSync(join(repoRoot, "pnpm-workspace.yaml"), "utf8");
   const packages = workspaces.match(/^packages:\n((?:\s+-\s+\S+\n)+)/mu)?.[1];
-  if (!packages) throw new Error('pnpm-workspace.yaml has no packages: block');
+  if (!packages) throw new Error("pnpm-workspace.yaml has no packages: block");
   return packages
-    .split('\n')
-    .map((line) => line.replace(/^\s*-\s*/u, '').trim())
+    .split("\n")
+    .map((line) => line.replace(/^\s*-\s*/u, "").trim())
     .filter(Boolean);
 }
 
@@ -52,11 +51,11 @@ const units = deploymentUnits();
 
 /** The unit a repo-relative path belongs to, or null for root/tooling files. */
 function owningUnit(repoRelativePath: string): string | null {
-  const normalized = repoRelativePath.split(sep).join('/');
+  const normalized = repoRelativePath.split(sep).join("/");
   return units.find((unit) => normalized === unit || normalized.startsWith(`${unit}/`)) ?? null;
 }
 
-const SOURCE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.astro'];
+const SOURCE_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".astro"];
 
 // `from '...'`, `import '...'`, `import('...')` and `require('...')`, single or
 // double quoted. Only relative specifiers can cross a unit boundary — a bare
@@ -108,14 +107,14 @@ function callArguments(contents: string, open: number): string[] | null {
   let start = open;
   for (let i = open; i < contents.length; i += 1) {
     const char = contents[i];
-    if (char === '(' || char === '[' || char === '{') depth += 1;
-    else if (char === ')' || char === ']' || char === '}') {
+    if (char === "(" || char === "[" || char === "{") depth += 1;
+    else if (char === ")" || char === "]" || char === "}") {
       depth -= 1;
       if (depth === 0) {
         args.push(contents.slice(start + 1, i));
         return args.map((arg) => arg.trim()).filter(Boolean);
       }
-    } else if (char === ',' && depth === 1) {
+    } else if (char === "," && depth === 1) {
       args.push(contents.slice(start + 1, i));
       start = i;
     }
@@ -132,8 +131,8 @@ function callArguments(contents: string, open: number): string[] | null {
 function staticPathTarget(args: string[], file: string, unit: string): string | null {
   const [base, ...rest] = args;
   let from: string;
-  if (base === 'import.meta.dirname' || base === '__dirname') from = dirname(file);
-  else if (base === 'process.cwd()') from = join(repoRoot, unit);
+  if (base === "import.meta.dirname" || base === "__dirname") from = dirname(file);
+  else if (base === "process.cwd()") from = join(repoRoot, unit);
   else return null;
   const segments: string[] = [];
   for (const arg of rest) {
@@ -144,23 +143,20 @@ function staticPathTarget(args: string[], file: string, unit: string): string | 
   return resolve(from, ...segments);
 }
 
-describe('deployment unit boundaries', () => {
-  it('reads a plausible set of units from pnpm-workspace.yaml', () => {
+describe("deployment unit boundaries", () => {
+  it("reads a plausible set of units from pnpm-workspace.yaml", () => {
     // Everything below is only as strong as this list. If the parse silently
     // returned nothing, every assertion would vacuously pass.
-    expect(units.length).toBeGreaterThanOrEqual(20);
-    expect(units).toContain('app/core');
-    expect(units).toContain('net/apex');
-    expect(units).toContain('dev/apex');
+    expect(units).toEqual(["app/core", "org/core"]);
   });
 
-  it('finds source files to check', () => {
+  it("finds source files to check", () => {
     // Same guard: an empty file list would make the boundary test meaningless.
     expect(sourceFilesUnderUnits().length).toBeGreaterThan(100);
     expect(implementationFilesUnderUnits().length).toBeGreaterThan(sourceFilesUnderUnits().length);
   });
 
-  it('never reaches outside its own deployment unit by relative path', () => {
+  it("never reaches outside its own deployment unit by relative path", () => {
     // Both escapes break extraction: into a sibling unit, and into the
     // repository root (`tools/`, `scripts/`, a root config, a root fixture).
     // The root is only orchestration — it will not exist next to an extracted
@@ -168,11 +164,11 @@ describe('deployment unit boundaries', () => {
     const violations: string[] = [];
 
     for (const { path, unit } of sourceFilesUnderUnits()) {
-      const contents = readFileSync(join(repoRoot, path), 'utf8');
+      const contents = readFileSync(join(repoRoot, path), "utf8");
       for (const [, specifier] of contents.matchAll(RELATIVE_SPECIFIER)) {
         const target = relative(repoRoot, resolve(dirname(join(repoRoot, path)), specifier));
         if (owningUnit(target) !== unit) {
-          violations.push(`${path} -> ${specifier} (resolves to ${target || '.'})`);
+          violations.push(`${path} -> ${specifier} (resolves to ${target || "."})`);
         }
       }
     }
@@ -183,7 +179,7 @@ describe('deployment unit boundaries', () => {
     expect(violations).toEqual([]);
   });
 
-  it('never names a path outside its own deployment unit in any implementation file', () => {
+  it("never names a path outside its own deployment unit in any implementation file", () => {
     // The import scan above only reads module specifiers. Configuration reaches
     // files too — a `../../tools/x.mjs` in a package.json script, a `$schema`,
     // `@import`/`@source` in a stylesheet, `main` in wrangler.jsonc, a Knip
@@ -193,11 +189,11 @@ describe('deployment unit boundaries', () => {
     const violations: string[] = [];
 
     for (const { path, unit } of implementationFilesUnderUnits()) {
-      const contents = readFileSync(join(repoRoot, path), 'utf8');
+      const contents = readFileSync(join(repoRoot, path), "utf8");
       for (const [, reference] of contents.matchAll(PARENT_PATH)) {
         const target = relative(repoRoot, resolve(dirname(join(repoRoot, path)), reference));
         if (owningUnit(target) !== unit) {
-          violations.push(`${path}: ${reference} (resolves to ${target || '.'})`);
+          violations.push(`${path}: ${reference} (resolves to ${target || "."})`);
         }
       }
     }
@@ -205,14 +201,14 @@ describe('deployment unit boundaries', () => {
     expect(violations).toEqual([]);
   });
 
-  it('never builds a path outside its own deployment unit with node:path', () => {
+  it("never builds a path outside its own deployment unit with node:path", () => {
     // `resolve(import.meta.dirname, '..', '..', 'tools')` escapes without a
     // single `../` token, so the text scan above cannot see it. Only calls whose
     // arguments are all static are judged; see staticPathTarget.
     const violations: string[] = [];
 
     for (const { path, unit } of sourceFilesUnderUnits()) {
-      const contents = readFileSync(join(repoRoot, path), 'utf8');
+      const contents = readFileSync(join(repoRoot, path), "utf8");
       if (!/['"](?:node:)?path['"]/u.test(contents)) continue;
       for (const match of contents.matchAll(PATH_CALL)) {
         const open = (match.index ?? 0) + match[0].length - 1;
@@ -222,7 +218,7 @@ describe('deployment unit boundaries', () => {
         if (target === null) continue;
         const repoRelative = relative(repoRoot, target);
         if (owningUnit(repoRelative) !== unit) {
-          violations.push(`${path}: ${match[0]}${args.join(', ')}) -> ${repoRelative || '.'}`);
+          violations.push(`${path}: ${match[0]}${args.join(", ")}) -> ${repoRelative || "."}`);
         }
       }
     }
@@ -230,20 +226,20 @@ describe('deployment unit boundaries', () => {
     expect(violations).toEqual([]);
   });
 
-  it('never declares another deployment unit as a package dependency', () => {
+  it("never declares another deployment unit as a package dependency", () => {
     const violations: string[] = [];
     const unitPackageNames = new Map<string, string>();
 
     for (const unit of units) {
-      const manifestPath = join(repoRoot, unit, 'package.json');
+      const manifestPath = join(repoRoot, unit, "package.json");
       if (!existsSync(manifestPath)) continue;
-      unitPackageNames.set(JSON.parse(readFileSync(manifestPath, 'utf8')).name, unit);
+      unitPackageNames.set(JSON.parse(readFileSync(manifestPath, "utf8")).name, unit);
     }
 
     for (const unit of units) {
-      const manifestPath = join(repoRoot, unit, 'package.json');
+      const manifestPath = join(repoRoot, unit, "package.json");
       if (!existsSync(manifestPath)) continue;
-      const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+      const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
       const declared = {
         ...manifest.dependencies,
         ...manifest.devDependencies,
@@ -257,7 +253,7 @@ describe('deployment unit boundaries', () => {
         if (unitPackageNames.has(name) && unitPackageNames.get(name) !== unit) {
           violations.push(`${unit} depends on ${name} (${unitPackageNames.get(name)})`);
         }
-        if (typeof range === 'string' && /^(workspace|link|file):/u.test(range)) {
+        if (typeof range === "string" && /^(workspace|link|file):/u.test(range)) {
           violations.push(`${unit} depends on ${name} via ${range}`);
         }
       }
@@ -271,15 +267,15 @@ describe('deployment unit boundaries', () => {
   // can still be linted, typechecked and tested once the repository root is
   // gone. They were previously only prose in each unit's knip.jsonc.
 
-  it('never extends a tsconfig outside its own deployment unit', () => {
+  it("never extends a tsconfig outside its own deployment unit", () => {
     const violations: string[] = [];
 
     for (const unit of units) {
-      const tsconfigPath = join(repoRoot, unit, 'tsconfig.json');
+      const tsconfigPath = join(repoRoot, unit, "tsconfig.json");
       if (!existsSync(tsconfigPath)) continue;
       // tsconfig.json is JSONC (comments, trailing commas), so read the one
       // field this test cares about directly rather than parsing the whole file.
-      const raw = readFileSync(tsconfigPath, 'utf8');
+      const raw = readFileSync(tsconfigPath, "utf8");
       const single = raw.match(/"extends"\s*:\s*"([^"]+)"/u);
       const array = raw.match(/"extends"\s*:\s*\[([^\]]*)\]/u);
       const targets = single
@@ -291,7 +287,7 @@ describe('deployment unit boundaries', () => {
       for (const target of targets) {
         // A bare specifier resolves through node_modules (a real dependency),
         // which survives extraction. Only a relative path can escape the unit.
-        if (!target.startsWith('.')) continue;
+        if (!target.startsWith(".")) continue;
         const resolved = relative(repoRoot, resolve(dirname(tsconfigPath), target));
         if (owningUnit(resolved) !== unit) {
           violations.push(`${unit}/tsconfig.json extends ${target} (${resolved})`);
@@ -308,19 +304,19 @@ describe('deployment unit boundaries', () => {
     const violations: string[] = [];
 
     for (const unit of units) {
-      const tsconfigPath = join(repoRoot, unit, 'tsconfig.json');
-      const manifestPath = join(repoRoot, unit, 'package.json');
+      const tsconfigPath = join(repoRoot, unit, "tsconfig.json");
+      const manifestPath = join(repoRoot, unit, "package.json");
       if (!existsSync(tsconfigPath) || !existsSync(manifestPath)) continue;
-      const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+      const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
       const declared = new Set(
         Object.keys({ ...manifest.dependencies, ...manifest.devDependencies }),
       );
-      const list = readFileSync(tsconfigPath, 'utf8').match(/"types"\s*:\s*\[([^\]]*)\]/u);
-      for (const [, entry] of (list?.[1] ?? '').matchAll(/"([^"]+)"/gu)) {
-        if (entry === undefined || entry.startsWith('.')) continue;
-        const name = entry.startsWith('@')
-          ? entry.split('/').slice(0, 2).join('/')
-          : (entry.split('/')[0] as string);
+      const list = readFileSync(tsconfigPath, "utf8").match(/"types"\s*:\s*\[([^\]]*)\]/u);
+      for (const [, entry] of (list?.[1] ?? "").matchAll(/"([^"]+)"/gu)) {
+        if (entry === undefined || entry.startsWith(".")) continue;
+        const name = entry.startsWith("@")
+          ? entry.split("/").slice(0, 2).join("/")
+          : (entry.split("/")[0] as string);
         if (!declared.has(name) && !declared.has(`@types/${name}`)) {
           violations.push(`${unit}/tsconfig.json types "${entry}" is not a declared dependency`);
         }
@@ -330,8 +326,8 @@ describe('deployment unit boundaries', () => {
     expect(violations).toEqual([]);
   });
 
-  it('owns the tooling configuration needed to run standalone', () => {
-    const required = ['vitest.config.ts', 'vitest.setup.ts', '.oxlintrc.json', '.oxfmtrc.json'];
+  it("owns the tooling configuration needed to run standalone", () => {
+    const required = ["vitest.config.ts", "vitest.setup.ts", ".oxlintrc.json", ".oxfmtrc.json"];
     const missing: string[] = [];
 
     for (const unit of units) {
@@ -343,27 +339,28 @@ describe('deployment unit boundaries', () => {
     expect(missing).toEqual([]);
   });
 
-  it('declares every tool binary its own scripts invoke', () => {
+  it("declares every tool binary its own scripts invoke", () => {
     // Binaries provided by the runtime/toolchain rather than by a package, or
     // supplied by the deployment platform itself.
-    const ambient = new Set(['node', 'pnpm', 'echo', 'rm', 'cp', 'mkdir', 'cd']);
+    const ambient = new Set(["node", "pnpm", "echo", "rm", "cp", "mkdir", "cd"]);
     // Binary name -> the package that provides it, where they differ.
     const provider: Record<string, string> = {
-      tsc: 'typescript',
-      playwright: '@playwright/test',
-      vitest: 'vitest',
+      tsc: "typescript",
+      vp: "vite-plus",
+      playwright: "@playwright/test",
+      vitest: "vitest",
       // Hurl is a Rust binary; `@orangeopensource/hurl` is its npm distribution
       // and ships the bins `hurl` and `hurlfmt`. The command word and the
       // package name differ, which is exactly what this map is for.
-      hurl: '@orangeopensource/hurl',
-      hurlfmt: '@orangeopensource/hurl',
+      hurl: "@orangeopensource/hurl",
+      hurlfmt: "@orangeopensource/hurl",
     };
     const violations: string[] = [];
 
     for (const unit of units) {
-      const manifestPath = join(repoRoot, unit, 'package.json');
+      const manifestPath = join(repoRoot, unit, "package.json");
       if (!existsSync(manifestPath)) continue;
-      const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+      const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
       const declared = new Set(
         Object.keys({ ...manifest.dependencies, ...manifest.devDependencies }),
       );
@@ -373,11 +370,11 @@ describe('deployment unit boundaries', () => {
           // Strip leading `VAR=value` assignments, then take the command word.
           const command = segment
             .trim()
-            .replace(/^(?:\w+=\S*\s+)+/u, '')
+            .replace(/^(?:\w+=\S*\s+)+/u, "")
             .split(/\s+/u)[0];
           if (!command || ambient.has(command)) continue;
           // `pnpm run <other>` is an intra-unit reference, not a binary.
-          if (command.startsWith('pnpm')) continue;
+          if (command.startsWith("pnpm")) continue;
           const pkg = provider[command] ?? command;
           if (!declared.has(pkg)) {
             violations.push(`${unit}: script "${scriptName}" runs undeclared binary "${command}"`);

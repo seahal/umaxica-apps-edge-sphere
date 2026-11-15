@@ -1,5 +1,10 @@
 # ADR 019: Edge boundaries that can ship beside the Rails rewrite
 
+> Current Sphere scope is `app/core` and `org/core`. Public content and Apex
+> implementations moved to Press and Zenith; their detailed contracts below
+> are historical for this checkout. The retained Cores use regional public
+> fetch origins as recorded in ADR 018.
+
 > 2026-10-11 amendment: Core no longer reads the Preference `language` Cookie.
 > Display locale (including 429) uses the last scalar `lx` URL parameter,
 > lowercased and validated, or the existing `ja` default. The twelve public
@@ -11,14 +16,13 @@
 
 Accepted and implemented for the independent Edge slices recorded here on
 2026-09-15. The Rails Preference reference was inspected read-only at the
-specified SHA during the handoff review. TanStack public locale URL integration,
-authentication work and live production integration remain deferred because the
-published URL contract and external runtime contracts are not all approved.
+specified SHA during the handoff review. The current Sphere implementation is
+limited to `app/core` and `org/core`; the Hono and public content sections below
+describe the pre-split estate.
 
-The twelve public content cells are TanStack Start/Vite in the current tree.
-The earlier Astro record in `adr/015-public-content-surfaces-astro.md` is kept
-as history; this ADR and the current worker manifest describe the active Edge
-boundaries.
+The public content cells and Hono Apex Workers moved to Press and Zenith. This
+ADR remains the record of their original contract while the Core boundaries
+below are maintained in Sphere.
 
 ## Context
 
@@ -47,10 +51,10 @@ boundary.
   `Authorization` and access secrets are not forwarded, and a VPC failure has
   no public Internet fallback. Public content responses use the existing
   contract-specific status mapping and schema checks.
-- The three Core cells use their configured `RAILS_ORIGIN` through ordinary
-  public HTTPS `fetch`. They do not use the Workers VPC, the public content
-  client or a VPC-to-Internet fallback. No JWT, JWKS or new authentication
-  header is introduced.
+- The pre-split Core cells used `RAILS_ORIGIN` through ordinary public HTTPS
+  `fetch`. The retained `app/core` and `org/core` select a regional origin by
+  host (`RAILS_ORIGIN_JP` or `RAILS_ORIGIN_US`) and do not use Workers VPC. No
+  JWT, JWKS or new authentication header is introduced.
 - Core Rails-owned paths use the transparent dispatcher contract. Path,
   method, query, request body, permitted browser headers and CSRF material are
   forwarded according to the existing ownership table. Rails status,

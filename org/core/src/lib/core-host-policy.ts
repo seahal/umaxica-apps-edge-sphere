@@ -1,4 +1,4 @@
-import { CANONICAL_ORIGIN } from './canonical';
+import { CANONICAL_ORIGIN } from "./canonical";
 
 /*
  * The public Core hosts already have two configuration owners: the canonical
@@ -8,24 +8,43 @@ import { CANONICAL_ORIGIN } from './canonical';
  * wrangler `name` entry, which is what exposes its stable workers.dev URL.
  */
 export const CORE_PUBLIC_HOST = new URL(CANONICAL_ORIGIN).hostname;
-export const CORE_ALTERNATE_HOST = CORE_PUBLIC_HOST.replace(/^jp\./u, 'us.');
-const brandTld = CORE_PUBLIC_HOST.slice(CORE_PUBLIC_HOST.lastIndexOf('.') + 1);
-export const CORE_WORKER_NAME = `umaxica-apps-edge-${brandTld}-core`;
+export const CORE_ALTERNATE_HOST = CORE_PUBLIC_HOST.replace(/^jp\./u, "us.");
+export type CoreRegion = "jp" | "us";
+const brandTld = CORE_PUBLIC_HOST.slice(CORE_PUBLIC_HOST.lastIndexOf(".") + 1);
+export const CORE_WORKER_NAME = `umaxica-apps-edge-sphere-${brandTld}-core`;
 
 const WORKERS_DEV_HOST_PATTERN = new RegExp(
   `^${CORE_WORKER_NAME}[.][a-z0-9-]+[.]workers[.]dev$`,
-  'u',
+  "u",
 );
-const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
+const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 export type CoreHostPolicy = {
   allowLocalhost: boolean;
 };
 
+export function coreRegionForHostname(
+  hostname: string | undefined,
+  configuredRegion?: unknown,
+): CoreRegion | null {
+  if (hostname === undefined || hostname.length === 0) return null;
+
+  const normalized = hostname.toLowerCase();
+  if (normalized === CORE_PUBLIC_HOST) return "jp";
+  if (normalized === CORE_ALTERNATE_HOST) return "us";
+  if (
+    (isLocalHost(normalized) || WORKERS_DEV_HOST_PATTERN.test(normalized)) &&
+    (configuredRegion === "jp" || configuredRegion === "us")
+  ) {
+    return configuredRegion;
+  }
+  return null;
+}
+
 function isLocalHost(hostname: string): boolean {
   return (
     LOCAL_HOSTS.has(hostname) ||
-    (hostname.length > '.localhost'.length && hostname.endsWith('.localhost'))
+    (hostname.length > ".localhost".length && hostname.endsWith(".localhost"))
   );
 }
 
@@ -46,17 +65,17 @@ export function isAllowedCoreHost(hostname: string | undefined, policy: CoreHost
 
 export function isProductionCoreEnvironment(env: unknown): boolean {
   return (
-    typeof env === 'object' && env !== null && 'EDGE_ENV' in env && env.EDGE_ENV === 'production'
+    typeof env === "object" && env !== null && "EDGE_ENV" in env && env.EDGE_ENV === "production"
   );
 }
 
 export function coreHostRejectedResponse(): Response {
-  return new Response('Misdirected Request\n', {
+  return new Response("Misdirected Request\n", {
     status: 421,
     headers: {
-      'Cache-Control': 'no-store',
-      'Content-Type': 'text/plain; charset=utf-8',
-      'X-Robots-Tag': 'noindex, nofollow',
+      "Cache-Control": "no-store",
+      "Content-Type": "text/plain; charset=utf-8",
+      "X-Robots-Tag": "noindex, nofollow",
     },
   });
 }

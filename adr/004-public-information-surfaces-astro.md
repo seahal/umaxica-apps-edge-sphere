@@ -1,5 +1,7 @@
 # ADR 004: Public Information Surfaces Use Astro
 
+> Superseded: moved to umaxica-apps-edge-press. This rejected framework decision is retained as history.
+
 ## Status: Rejected 2026-08-12 — the twelve content frames stay Next.js
 
 **This plan is discarded. Do not implement it.** `docs`, `news`, `info` and

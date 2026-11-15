@@ -88,7 +88,7 @@ function checkEnvironments(ws, config, requiredEnvs = ['development', 'test']) {
   // only place it can be caught, which is why it is asserted here rather than
   // left to a unit test.
   //
-  // Only the seventeen units in the manifest reach this function. `all/busy` (a
+  // Only the two Core packages in the manifest reach this function. `all/busy` (a
   // maintenance page answering 503 straight from the assets binding) and
   // `tools/vpc-probe` (never deployed, no environments) are outside it, and are
   // exempt for those reasons rather than by oversight.
@@ -215,144 +215,10 @@ function checkEnvironments(ws, config, requiredEnvs = ['development', 'test']) {
   }
 }
 
-// Where a Rails-backed Worker may hold the Workers VPC binding, and on which
-// terms. This models the architecture rather than wrangler's syntax: wrangler
-// would happily accept the binding in `env.test`, and the reason it must not be
-// there is ours, not the tool's.
-//
-// `remote` is a LOCAL-development flag. It makes wrangler run this Worker's code
-// in local workerd and proxy only the binding out to the real Cloudflare
-// resource; on a deployed Worker it means nothing, because there is no local
-// simulation to override.
-// https://developers.cloudflare.com/workers/development-testing/#remote-bindings
-//
-// So `remote: true` in `env.vpc` is required (local workerd cannot simulate a
-// VPC Service) and its absence at the top level is required too — not because a
-// deployed Worker would break, but because a key that does nothing where it sits
-// reads as though it does something.
-//
-// serviceId is read from the manifest per tier: the two ids are equal during the
-// AWS bootstrap and stop being equal at cutover, and this table does not care
-// which of those is true today.
-const VPC_POLICY = [
-  {
-    // The top level IS production. During the bootstrap it points at the
-    // development VPC Service on purpose — see the manifest and ADR 006.
-    label: 'top-level (production)',
-    read: (config) => config.vpc_services,
-    required: true,
-    remote: false,
-    serviceId: (m) => m.vpcProductionServiceId,
-  },
-  {
-    // `pnpm dev:vpc` — local workerd against the real development Service.
-    label: 'env.vpc',
-    read: (config) => config.env?.vpc?.vpc_services,
-    required: true,
-    remote: true,
-    serviceId: (m) => m.vpcDevelopmentServiceId,
-  },
-  {
-    // The ordinary development loop, which now reaches Rails over the real
-    // binding. This costs `pnpm dev` and `pnpm preview` an interactive
-    // `wrangler login`: a VPC Service has no local simulator, so resolving this
-    // environment always opens a remote proxy session, and that session rejects
-    // API-token authentication. Measured; ADR 006 records it.
-    label: 'env.development',
-    read: (config) => config.env?.development?.vpc_services,
-    required: true,
-    remote: true,
-    serviceId: (m) => m.vpcDevelopmentServiceId,
-  },
-  {
-    // Never deployed and never given a Rails transport: a test tier that can
-    // reach a real Rails is not a test tier.
-    label: 'env.test',
-    read: (config) => config.env?.test?.vpc_services,
-    required: false,
-  },
-  {
-    // `local` exists only on the Vite-built frames, and its whole point is that
-    // it declares no VPC Service: wrangler treats one as a resource with no local
-    // simulator, so any environment naming it forces a remote proxy session that
-    // needs an interactive `wrangler login`. Declaring one here would put that
-    // back in the everyday loop and in CI, which has no credentials at all.
-    label: 'env.local',
-    read: (config) => config.env?.local?.vpc_services,
-    required: false,
-  },
-];
-
-function checkVpcPolicy(ws, config) {
-  for (const rule of VPC_POLICY) {
-    const declared = (rule.read(config) ?? []).filter((v) => v.binding === manifest.vpcBinding);
-
-    if (!rule.required) {
-      if (declared.length > 0) {
-        fail(ws, `${rule.label} must not declare vpc_services binding ${manifest.vpcBinding}`);
-      }
-      continue;
-    }
-
-    if (declared.length !== 1) {
-      fail(
-        ws,
-        `${rule.label} must declare vpc_services binding ${manifest.vpcBinding} exactly once (found ${declared.length})`,
-      );
-      continue;
-    }
-
-    const expectedId = rule.serviceId(manifest);
-    if (declared[0].service_id !== expectedId) {
-      fail(
-        ws,
-        `${rule.label} vpc_services service_id must be ${expectedId} (found ${declared[0].service_id})`,
-      );
-    }
-    if (rule.remote && declared[0].remote !== true) {
-      fail(
-        ws,
-        `${rule.label} vpc_services must set remote: true — local workerd cannot simulate a VPC Service`,
-      );
-    }
-    if (!rule.remote && declared[0].remote === true) {
-      fail(
-        ws,
-        `${rule.label} vpc_services must not set remote: true — it is a local-development flag with no meaning on a deployed Worker`,
-      );
-    }
-  }
-}
-
-function checkOpenNext(ws, config) {
-  // Next.js only accepts development|test|production, and the top level is production.
-  if (config.vars?.NODE_ENV !== 'production') {
-    fail(ws, 'top-level vars must set NODE_ENV to production');
-  }
-  if (!config.compatibility_flags?.includes('nodejs_compat')) {
-    fail(ws, 'compatibility_flags must include nodejs_compat');
-  }
-  if (config.assets?.binding !== 'ASSETS') {
-    fail(ws, 'assets binding ASSETS is missing');
-  }
-  if (!(config.services ?? []).some((s) => s.binding === 'WORKER_SELF_REFERENCE')) {
-    fail(ws, 'services binding WORKER_SELF_REFERENCE is missing');
-  }
-  if (config.images?.binding !== 'IMAGES') {
-    fail(ws, 'images binding IMAGES is missing');
-  }
-}
-
-// The Vite counterpart of checkOpenNext.
-//
-// A Vite-built Worker keeps the Rails and VPC contract and drops three bindings
-// that only OpenNext ever read: ASSETS (Cloudflare matches static assets before
-// the Worker runs, so nothing has to serve one), WORKER_SELF_REFERENCE (an
-// OpenNext requirement with no application reader) and IMAGES (only OpenNext's
-// own image handler used it). It must also NOT declare `assets.directory` — the
-// plugin writes that into the output wrangler.json at build time, and a value in
-// the input config describes a directory the deployed Worker never uses.
-// adr/012-apex-vite-build-and-static-assets.md is normative on both.
+// Core Workers are built with Vite. Cloudflare serves their static assets
+// before invoking the Worker, while route handling and error documents remain
+// in the Worker. The Vite plugin writes `assets.directory` to its output config;
+// declaring it in the input would describe the wrong directory.
 function checkViteWorker(ws, config) {
   if (config.vars?.NODE_ENV !== 'production') {
     fail(ws, 'top-level vars must set NODE_ENV to production');
@@ -366,7 +232,7 @@ function checkViteWorker(ws, config) {
       'assets.directory must not be set — `vite build` writes it into the output wrangler.json, and a value here describes a directory the deployed Worker never uses',
     );
   }
-  // Both "none" for the reason the apex workers pin them: Cloudflare matches
+  // Both "none" because Cloudflare matches
   // assets BEFORE the Worker, so a stray index.html in the build output would
   // answer `/` in place of the index route, silently and only in production.
   // `not_found_handling: "none"` is what lets the Worker produce the 404
@@ -380,12 +246,6 @@ function checkViteWorker(ws, config) {
   if (config.images !== undefined) {
     fail(ws, 'images binding must not be declared — nothing reads it');
   }
-  if ((config.services ?? []).some((s) => s.binding === 'WORKER_SELF_REFERENCE')) {
-    fail(ws, 'WORKER_SELF_REFERENCE is an OpenNext requirement and must not be declared');
-  }
-  if (config.main?.includes('.open-next')) {
-    fail(ws, 'main must not point into .open-next');
-  }
 }
 
 // Static assets are the one thing that ships without any gate noticing it is
@@ -395,13 +255,11 @@ function checkViteWorker(ws, config) {
 // never committed passes every local check and then vanishes from CI's clean
 // clone. Presence alone is therefore not enough: these have to be IN GIT.
 //
-// This is why the apex workers are checked too. Every unit now builds with Vite,
-// which copies `public/` into `dist/client` and hands that directory to
-// `assets.directory` in the OUTPUT wrangler.json — so `public/` is the source of
-// truth for the deployed asset surface in every unit, and a file missing from git
-// is a file missing from the deploy. The required asset set still differs by
-// worker class: TanStack frames publish the offline Service Worker, while Hono
-// apex workers deliberately removed that feature.
+// The Core packages are checked here. Both build with Vite, which copies
+// public/ into dist/client and points assets.directory at that output. Required
+// files must be tracked so they survive a clean checkout; package-specific
+// asset requirements are checked below.
+
 const trackedFiles = (() => {
   let cache = null;
   return () => {
@@ -420,12 +278,6 @@ const trackedFiles = (() => {
 // on by test/standard-url-contract.test.ts and by each unit's standard-contract
 // e2e spec, both of which read the working tree and so cannot see this gap.
 const REQUIRED_PUBLIC_ASSETS = ['_headers', 'service-worker.js'];
-const STANDALONE_REQUIRED_PUBLIC_ASSETS = ['_headers'];
-const STANDALONE_FORBIDDEN_PUBLIC_ASSETS = [
-  'service-worker.js',
-  'service-worker-register.js',
-  'manifest.webmanifest',
-];
 
 // The one asset that is generated rather than committed: Tailwind's output.
 //
@@ -513,47 +365,23 @@ function checkPublicAssets(ws, { required = REQUIRED_PUBLIC_ASSETS, forbidden = 
   }
 }
 
-for (const ws of manifest.railsBacked) {
-  const config = loadWrangler(ws);
-  if (!config) continue;
-  // Only railsBacked workers need `vpc` — it exists to carry the VPC binding.
-  checkEnvironments(ws, config, ['development', 'vpc', 'test']);
-  checkOpenNext(ws, config);
-  checkPublicAssets(ws);
-
-  checkVpcPolicy(ws, config);
-}
-
-for (const ws of manifest.railsBackedVite ?? []) {
+for (const ws of manifest.railsBackedVite) {
   const config = loadWrangler(ws);
   if (!config) continue;
   // `local` is the extra tier: vite dev runs the Worker in workerd, and it is
-  // the tier whose `RAILS_ORIGIN` points at the development container's Rails.
+  // the tier whose local region may point at the development container's Rails.
   checkEnvironments(ws, config, ['local', 'development', 'test']);
   checkViteWorker(ws, config);
   checkPublicAssets(ws);
 
-  // The Cores reach Rails over the public internet at `RAILS_ORIGIN`, not over
-  // Workers VPC — adr/018-core-rails-direct-internet.md.
+  // Core selects a regional origin over ordinary public fetch. Current Wrangler
+  // tiers configure none, so Rails-owned requests fail closed (ADR 018).
   if (vpcBindings(config).length > 0) {
     fail(
       ws,
-      'railsBackedVite workers must not declare vpc_services — they reach Rails at RAILS_ORIGIN',
+      'Core workers must not declare vpc_services — they reach Rails at a regional public origin',
     );
   }
-}
-
-// The twelve public content cells: the same Vite + TanStack Start Worker shape as
-// the Cores (checkViteWorker), but Rails is reached over the Workers VPC binding,
-// so they carry the VPC policy and a `vpc` tier. adr/019.
-for (const ws of manifest.railsBackedVpcVite ?? []) {
-  const config = loadWrangler(ws);
-  if (!config) continue;
-  checkEnvironments(ws, config, ['local', 'development', 'vpc', 'test']);
-  checkViteWorker(ws, config);
-  checkPublicAssets(ws);
-
-  checkVpcPolicy(ws, config);
 }
 
 // Deploying production means running with no `--env`, and CLOUDFLARE_ENV picks
@@ -561,12 +389,7 @@ for (const ws of manifest.railsBackedVpcVite ?? []) {
 // CLOUDFLARE_ENV=development, so a deploy script that does not blank it would
 // silently ship to `<name>-development` and leave production untouched — a
 // failure that looks like success. Verified with `wrangler deploy --dry-run`.
-for (const ws of [
-  ...manifest.railsBacked,
-  ...(manifest.railsBackedVite ?? []),
-  ...(manifest.railsBackedVpcVite ?? []),
-  ...manifest.contentSurface,
-]) {
+for (const ws of manifest.railsBackedVite) {
   const pkgPath = join(root, ws, 'package.json');
   if (!existsSync(pkgPath)) continue;
   const scripts = JSON.parse(readFileSync(pkgPath, 'utf8')).scripts ?? {};
@@ -581,7 +404,7 @@ for (const ws of [
       // `vite` counts: @cloudflare/vite-plugin reads CLOUDFLARE_ENV to pick the
       // environment exactly as wrangler does, so `vite build` with the variable
       // exported would bake development vars into the production artefact.
-      if (!/opennextjs-cloudflare|wrangler|\bvite\b/u.test(segment)) continue;
+      if (!/wrangler|\bvite\b/u.test(segment)) continue;
       if (/--env\s+\S+/u.test(segment)) continue;
       if (!segment.includes('CLOUDFLARE_ENV=')) {
         fail(
@@ -593,42 +416,14 @@ for (const ws of [
   }
 }
 
-for (const ws of manifest.contentSurface) {
-  const config = loadWrangler(ws);
-  if (!config) continue;
-  checkEnvironments(ws, config);
-  checkOpenNext(ws, config);
-  checkPublicAssets(ws);
-  if (vpcBindings(config).length > 0) {
-    fail(
-      ws,
-      'contentSurface workers must not declare vpc_services (add the binding together with a Rails client implementation, then reclassify as railsBacked)',
-    );
-  }
-}
-
-for (const ws of manifest.standalone) {
-  const config = loadWrangler(ws);
-  if (!config) continue;
-  checkEnvironments(ws, config);
-  checkPublicAssets(ws, {
-    required: STANDALONE_REQUIRED_PUBLIC_ASSETS,
-    forbidden: STANDALONE_FORBIDDEN_PUBLIC_ASSETS,
-  });
-  if (vpcBindings(config).length > 0) {
-    fail(ws, 'standalone workers must not declare vpc_services');
-  }
-}
-
-// tools/vpc-probe — the diagnostic Worker behind `pnpm run check:vpc`.
+// tools/vpc-probe — the retained local diagnostic Worker for Press-owned Rails
+// hosts. It is not a deployed Sphere application surface.
 //
-// Its `vpc_services` sits at the TOP LEVEL, which is exactly what the fifteen
-// frames above are forbidden from doing. That is not an oversight. The frames'
-// rule exists because a top-level binding leaks into `env.development`, making
-// every ordinary `pnpm dev` authenticate to Cloudflare. This Worker declares no
-// environments at all, is absent from `pnpm-workspace.yaml`, has no deploy
-// script, and sets `workers_dev: false`, so there is no environment for it to
-// leak into and nothing that could ship it. Do not "fix" it to match the frames.
+// The diagnostic keeps this VPC binding at the top level because it has no
+// Wrangler environments. Core Workers do not declare the binding; their Rails
+// transport uses public fetch. The probe has no deploy script and sets
+// workers_dev to false, so it remains a local diagnostic only.
+
 {
   const ws = 'tools/vpc-probe';
   const { config, error } = readWranglerConfig(`${ws}/wrangler.jsonc`);
@@ -829,47 +624,14 @@ function checkRateLimitAllocation(ws, config, byNamespace) {
 {
   const byNamespace = new Map();
   seedAccountWideNamespaces(byNamespace);
-  for (const ws of [
-    ...manifest.railsBacked,
-    ...(manifest.railsBackedVite ?? []),
-    ...(manifest.railsBackedVpcVite ?? []),
-    ...manifest.contentSurface,
-    ...manifest.standalone,
-  ]) {
+  for (const ws of manifest.railsBackedVite) {
     const config = loadWrangler(ws);
     if (!config) continue;
     checkRateLimitAllocation(ws, config, byNamespace);
   }
 }
 
-// Workers Cache is deliberately OFF on the twelve public content cells, and it
-// has to be spelled `false` rather than left out: an absent key reads as "nobody
-// decided", and this was decided. The feature was enabled for the whole default
-// entrypoint before its contract with the per-request CSP nonce, `X-Request-ID`,
-// Host validation, first-touch rate limiting, completion logging, a cache key
-// that does not include the hostname, and heuristic freshness was worked out.
-//
-// Re-enabling it is a redesign, not a flag flip, so it has to come through here:
-// whoever turns it back on changes this guard on purpose and records the
-// contract in docs/caching-and-isr.md.
-function checkWorkersCacheDisabled(ws, config) {
-  if (config.cache?.enabled !== false) {
-    fail(
-      ws,
-      'cache.enabled must be explicitly false — Workers Cache is intentionally disabled until its contract is redesigned (docs/caching-and-isr.md); re-enabling means changing this guard deliberately',
-    );
-  }
-  if (config.cache && Object.keys(config.cache).some((key) => key !== 'enabled')) {
-    fail(ws, 'cache must declare only `enabled: false` while Workers Cache is disabled');
-  }
-  for (const [envName, env] of Object.entries(config.env ?? {})) {
-    if (env.cache !== undefined) {
-      fail(ws, `env.${envName} must not declare cache — it is inherited from the top level`);
-    }
-  }
-}
-
-// One observability policy for all seventeen units, so what they report can be
+// One observability policy for the two Core Workers, so what they report can be
 // compared. A unit that samples differently is not a slightly different unit; it
 // makes every cross-unit number meaningless. Compared as a whole object rather
 // than key by key, so a key ADDED to one unit is drift too.
@@ -881,8 +643,8 @@ const OBSERVABILITY_POLICY = {
   head_sampling_rate: 1,
   redact_query_string: true,
   issues: { enabled: true },
-  logs: { enabled: true, head_sampling_rate: 1, persist: true, invocation_logs: true },
-  traces: { enabled: true, head_sampling_rate: 0.2, persist: true },
+  logs: { enabled: true, head_sampling_rate: 0.1, persist: true, invocation_logs: true },
+  traces: { enabled: true, head_sampling_rate: 0.02, persist: true },
 };
 
 function canonicalJson(value) {
@@ -915,18 +677,7 @@ function checkObservabilityPolicy(ws, config) {
   }
 }
 
-for (const ws of manifest.railsBackedVpcVite ?? []) {
-  const config = loadWrangler(ws);
-  if (config) checkWorkersCacheDisabled(ws, config);
-}
-
-for (const ws of [
-  ...manifest.railsBacked,
-  ...(manifest.railsBackedVite ?? []),
-  ...(manifest.railsBackedVpcVite ?? []),
-  ...manifest.contentSurface,
-  ...manifest.standalone,
-]) {
+for (const ws of manifest.railsBackedVite) {
   const config = loadWrangler(ws);
   if (config) checkObservabilityPolicy(ws, config);
 }
@@ -936,10 +687,7 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-const checked =
-  manifest.railsBacked.length +
-  (manifest.railsBackedVite ?? []).length +
-  (manifest.railsBackedVpcVite ?? []).length +
-  manifest.contentSurface.length +
-  manifest.standalone.length;
-process.stdout.write(`check-workers: OK (${checked} workers validated)\n`);
+const checked = manifest.railsBackedVite.length;
+process.stdout.write(
+  `check-workers: OK (${checked} workspace workers validated; tools/vpc-probe checked)\n`,
+);

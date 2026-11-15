@@ -1,8 +1,13 @@
-# ADR 013: The fifteen frames run TanStack Start on Vite, not Next.js on OpenNext
+# ADR 013: The Core packages run TanStack Start on Vite
+
+> Current Sphere scope is `app/core` and `org/core`. Public content packages
+> remain TanStack Start but moved to `umaxica-apps-edge-press`. This ADR records
+> the earlier estate migration; package counts, matrices, and measurements below
+> are historical evidence, not the current Sphere inventory.
 
 ## Status: Implemented 2026-08-23 — CONDITIONAL GO
 
-`{app,com,org}/{core,docs,help,info,news}` — fifteen units — build with Vite,
+`app/core` and `org/core` build with Vite,
 `@cloudflare/vite-plugin` and `@tanstack/react-start`, and run in workerd in
 development, preview and production. `next`, `@opennextjs/cloudflare`,
 `next/server`, the App Router and `.open-next/` are absent from the repository.
@@ -10,8 +15,7 @@ development, preview and production. `next`, `@opennextjs/cloudflare`,
 
 The five Hono apex Workers were **never in scope** and are untouched;
 `adr/011-apex-workers-stay-hono.md` still holds and its reasoning is unaffected
-by this record. What changed is that all twenty deployment units now share one
-bundler.
+by this record. The two Core packages retained here share one bundler.
 
 > **Partially superseded 2026-09-02 by `adr/015-public-content-surfaces-astro.md`.**
 > The twelve public content surfaces (`{app,com,org}/{docs,help,info,news}`) move

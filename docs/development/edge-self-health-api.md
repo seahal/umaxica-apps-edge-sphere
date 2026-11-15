@@ -77,12 +77,11 @@ Health API consumer, and Edge is not Rails.
 
 ## Units
 
-| Runtime        | Units                                 | Mechanism                                         |
-| -------------- | ------------------------------------- | ------------------------------------------------- |
-| Hono           | `{app,com,org,net,dev}/apex`          | `create-apex-app.ts`                              |
-| TanStack Start | `{app,com,org}/core`                  | Server Route `src/routes/api.v0.health[.]json.ts` |
-| TanStack Start | `{app,com,org}/{docs,help,info,news}` | `src/routes/api.v0.health[.]json.ts`              |
+| Runtime        | Units                  | Mechanism                                         |
+| -------------- | ---------------------- | ------------------------------------------------- |
+| TanStack Start | `app/core`, `org/core` | Server Route `src/routes/api.v0.health[.]json.ts` |
 
-No Next.js unit remains active.
+The Apex and public content implementations moved to Zenith and Press. No
+Next.js unit remains active in Sphere.
 
 HTTP contract: `api/health-api.hurl` in each unit (`pnpm --dir <unit> run test:api`).

@@ -1,59 +1,47 @@
-# ADR 018: The three Cores reach Rails over the public internet, not Workers VPC
+# ADR 018: Core Rails requests use public fetch
+
+> Current Sphere scope is `app/core` and `org/core`. The original decision also
+> covered `com/core` and Press-owned content packages; those scopes were removed
+> in the split. Public `jp` and `us` hosts select separate regional origins.
 
 ## Status
 
-Accepted — 2026-09-11. Supersedes ADR 005 and ADR 006 **for `{app,com,org}/core`
-only**. The twelve TanStack public content surfaces keep the Workers VPC transport those
-ADRs describe.
+Accepted — 2026-09-11. For the retained Core packages, this decision supersedes
+the Workers VPC transport described in ADR 005 and ADR 006. Their remaining
+Workers VPC background applies to `tools/vpc-probe` only.
 
 ## Context
 
-The TanStack Start Cores (`app/core`, `com/core`, `org/core`) reached Rails over
-the Workers VPC binding `UMAXICA_APPS_EDGE_CF_WORKERS_VPC`: browser dispatch of
-Rails-owned paths in `src/lib/core-dispatch.ts`, and the Health API probe in
-`src/lib/rails-client.ts`. The Rails API these Cores talk to is published on the
-public internet, so the private hop is not needed for them.
-
-The binding carried real costs for these three units: a `vpc` wrangler tier and a
-`dev:vpc` script, a remote-binding session that needs an interactive
-`wrangler login`, a separate `EDGE_LOCAL_*` transport for local development that
-had to be bridged into workerd by `vite.config.ts`, and special handling for the
-`ProxyError:` 500 that Workers VPC answers instead of throwing.
+Before the repository split, the TanStack Start Cores (`app/core`, `com/core`,
+and `org/core`) and public content surfaces used the Workers VPC binding
+`UMAXICA_APPS_EDGE_CF_WORKERS_VPC` to reach Rails. The Core Rails API is
+published on the public internet, so the private hop was not needed for those
+requests.
 
 ## Decision
 
-1. Each Core reads its Rails origin from a `RAILS_ORIGIN` var in its own
-   `wrangler.jsonc`, per tier. There is no Rails origin constant in code.
-2. Both callers use the Worker's ordinary `fetch`. `vpc_services`, `env.vpc`,
-   `dev:vpc`, the `EDGE_LOCAL_*` branch and the ProxyError handling are removed
-   from the Cores.
-3. `src/lib/rails-origin.ts` accepts only a bare `https` origin, or plain `http`
-   for a `*.localhost` host. The browser's Cookie and Authorization headers ride
-   the dispatch hop, so they must not cross the internet in cleartext. Anything
-   else counts as not configured and fails closed: 503 on Rails-owned paths, and
-   `not-configured` on `/health`.
-4. No authentication header is added to requests to Rails.
-5. Local development uses the same variable, set in the gitignored `.dev.vars`
-   (`RAILS_ORIGIN=http://core.<brand>.localhost:3000`, the development
-   container's Rails; `.dev.vars.example` carries the line). `env.local` itself
-   names none: `pnpm test:api`, Playwright and CI run without Rails and wait for
-   `/health` 2xx, which a configured but unreachable Rails turns into 503
-   (measured 2026-09-11 against `vite dev`: no origin 200, an unreachable origin
-   in `.dev.vars` or in `env.local` 503).
-6. `env.test` names no Rails origin, and neither do production nor
-   `env.development` until the public Rails hosts exist.
+1. Core code selects `RAILS_ORIGIN_JP` or `RAILS_ORIGIN_US` from the public
+   request hostname and uses ordinary `fetch`. It does not use a Workers VPC
+   binding.
+2. A local request without a public regional hostname may select a region with
+   `RAILS_REGION`. Core does not guess a region for an unrecognized hostname.
+3. Each regional origin accepts a bare `https` origin, or plain `http` for a
+   `*.localhost` host. Without a valid origin for the selected region,
+   Rails-owned paths fail closed and `/health` reports Rails as not configured.
+4. No authentication header is added to requests to Rails. Client-supplied
+   `Forwarded`, `X-Forwarded-*`, and `X-Real-IP` headers are dropped.
+
+No current Wrangler tier configures `RAILS_ORIGIN_JP` or `RAILS_ORIGIN_US`.
+Consequently, Rails-owned requests on the current tiers fail closed until the
+selected region has an origin configured.
 
 ## Consequences
 
-- Rails now receives `Host` = the `RAILS_ORIGIN` host, not `jp.umaxica.<brand>`.
-  Under the VPC binding the request was built against the public Core hostname.
-  Rails' Host Authorization and any absolute URLs it generates (redirects, OIDC
-  callbacks, cookie domains) must accept the `RAILS_ORIGIN` host.
-- Client-supplied `Forwarded` / `X-Forwarded-*` / `X-Real-IP` are still dropped.
-  Rails therefore sees Cloudflare's egress address, not the browser's, as it did
-  over VPC.
-- The dispatch log outcomes `vpc_unreachable` and `binding_not_configured` became
-  `upstream_unreachable` and `origin_not_configured`, and `proxy_error_code` is
-  gone.
-- Until `RAILS_ORIGIN` is set for production and `env.development`, every
-  Rails-owned path on those tiers answers 503.
+- Rails receives the host from the selected regional origin. Rails Host
+  Authorization and any absolute URLs it generates must accept that host.
+- Rails sees Cloudflare's egress address rather than the browser's address.
+- Core dispatch logs use `upstream_unreachable` and
+  `origin_not_configured`; the former VPC-specific outcomes and proxy error
+  field are not part of the current Core logging contract.
+- The standalone `tools/vpc-probe` remains a local diagnostic for Rails hosts
+  owned by Press; it is not a Core transport or a deployment unit.

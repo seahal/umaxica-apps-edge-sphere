@@ -36,6 +36,7 @@
     "**/node_modules/**",
     "**/build/**",
     "**/+types/**",
-    "pnpm-lock.yaml"
+    "pnpm-lock.yaml",
+    "all/busy/public/**"
   ]
 }

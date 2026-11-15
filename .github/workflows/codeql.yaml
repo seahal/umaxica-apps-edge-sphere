@@ -6,7 +6,7 @@ name: CodeQL
 #
 # `actions` analyses the workflows and .github/actions/ — the GitHub-maintained
 # counterpart to the `zizmor` job in integration.yaml. `javascript-typescript`
-# covers all twenty units. Neither needs a build (`build-mode: none`).
+# covers both Core packages. Neither needs a build (`build-mode: none`).
 on:
   push:
     branches:
@@ -15,7 +15,7 @@ on:
   pull_request:
   schedule:
     # Weekly, so new queries reach code that has not changed.
-    - cron: '17 3 * * 1'
+    - cron: "17 3 * * 1"
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}

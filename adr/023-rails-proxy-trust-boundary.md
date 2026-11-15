@@ -1,5 +1,8 @@
 # ADR 023: The Edge → Rails proxy trust boundary — canonical client IP, a body ceiling, and an exact logout allow-list
 
+> Current Sphere scope is app/core and org/core. The code and Wrangler tiers
+> fail closed until the selected regional origin is configured.
+
 ## Status
 
 Accepted — 2026-09-22. Narrows the Rails dispatch half of
@@ -9,8 +12,8 @@ transport, the ownership model, the cookie boundary, or rate limiting.
 
 ## Context
 
-`{app,com,org}/core/src/lib/core-dispatch.ts` relays Rails-owned paths from the
-public FQDN to `RAILS_ORIGIN` over the public internet. A review of that relay
+`{app,org}/core/src/lib/core-dispatch.ts` relays Rails-owned paths from the
+public FQDN to the origin selected for its `jp` or `us` region. A review of that relay
 found three defense-in-depth gaps. None was reachable as a High or Medium
 finding; all three are the kind that becomes one after an unrelated change
 elsewhere.

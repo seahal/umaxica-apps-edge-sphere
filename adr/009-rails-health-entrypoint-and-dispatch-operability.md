@@ -1,5 +1,9 @@
 # ADR 009: One health entry point, and an operable Rails dispatch
 
+> Current Sphere scope is `app/core` and `org/core`; they use regional public
+> fetch per ADR 018. The other health implementations described below moved
+> with their packages to Zenith or Press, and the VPC record is historical.
+
 ## Status: Implemented — decision 3 amended by [ADR 016](016-rails-machine-health-api.md)
 
 Edge still owns a single public `/health` entry point (this record). The Rails
@@ -382,7 +386,7 @@ table.
 
 The `AbortSignal`-on-`Request` behaviour is asserted under undici and not yet
 measured under workerd against a real VPC binding; that needs
-`pnpm --filter umaxica-apps-edge-app-core run preview:vpc`, which requires
+`pnpm --filter umaxica-apps-edge-sphere-app-core run preview:vpc`, which requires
 `wrangler login`. If it turns out not to be honoured there, the fallback is
 `binding.fetch(railsRequest, { signal })`, which needs its own check against a
 streamed request body.

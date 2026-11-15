@@ -22,11 +22,9 @@ export const REGION = {
 
 /** First two digits of the existing development-port allocation. */
 export const TLD_CODE = {
-  com: '51',
   net: '52',
   org: '53',
   app: '54',
-  dev: '55',
 };
 
 /**
@@ -34,16 +32,11 @@ export const TLD_CODE = {
  * Unused numbers are not free to reassign.
  */
 export const SURFACE_CODE = {
-  apex: '01',
-  info: '03',
   core: '05',
-  docs: '06',
-  news: '07',
-  help: '08',
   jump: '09',
 };
 
-export const GLOBAL_SURFACES = new Set(['apex', 'info', 'docs', 'news', 'help', 'jump']);
+export const GLOBAL_SURFACES = new Set(['jump']);
 
 /** Prefix on the six-digit port+region id. Production carries none. */
 export const ENV_PREFIX = {
@@ -61,7 +54,6 @@ export const AUTH_RATE_LIMITER_BUDGET = { limit: 60, period: 60 };
 export const AUTH_SERIES = '10';
 export const AUTH_BRAND_DIGIT = {
   app: '1',
-  com: '2',
   org: '3',
 };
 
@@ -81,7 +73,7 @@ export const JUMP = {
 export const RETIRED_NAMESPACE_IDS = new Set(['999', '1006']);
 
 /** Documented USA Core RATE_LIMITER ids. Reserved, not configured. */
-export const RESERVED_USA_CORE_NAMESPACE_IDS = new Set(['510501', '530501', '540501']);
+export const RESERVED_USA_CORE_NAMESPACE_IDS = new Set(['530501', '540501']);
 
 export const POSITIVE_INTEGER_STRING = /^[1-9][0-9]*$/u;
 

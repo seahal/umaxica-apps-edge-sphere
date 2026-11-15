@@ -1,10 +1,10 @@
-import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { basename, join } from "node:path";
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 
-const repoRoot = join(import.meta.dirname, '..');
+const repoRoot = join(import.meta.dirname, "..");
 
 /**
  * "pnpm is the only package manager" is stated in three places that cannot
@@ -27,38 +27,40 @@ const repoRoot = join(import.meta.dirname, '..');
  * `.npmrc` sets `ignore-scripts=true`, so the guard would not run here anyway.
  */
 
-const FOREIGN_LOCKFILES = ['package-lock.json', 'yarn.lock', 'bun.lock', 'bun.lockb'];
+const FOREIGN_LOCKFILES = ["package-lock.json", "yarn.lock", "bun.lock", "bun.lockb"];
 
 function trackedFiles(): string[] {
-  const injected = process.env['EDGE_TRACKED_FILES'];
+  const injected = process.env["EDGE_TRACKED_FILES"];
   if (injected !== undefined) {
-    return injected.split('\n').filter(Boolean);
+    return injected.split("\n").filter(Boolean);
   }
-  return execFileSync('git', ['ls-files'], { cwd: repoRoot, encoding: 'utf8' })
-    .split('\n')
+  return execFileSync("git", ["ls-files"], { cwd: repoRoot, encoding: "utf8" })
+    .split("\n")
     .filter(Boolean);
 }
 
-describe('package manager invariants', () => {
-  it('tracks pnpm-lock.yaml and no other lockfile', () => {
+describe("package manager invariants", () => {
+  it("tracks pnpm-lock.yaml and no other lockfile", () => {
     const lockfiles = trackedFiles().filter((file) => FOREIGN_LOCKFILES.includes(basename(file)));
     expect(lockfiles).toEqual([]);
-    expect(trackedFiles()).toContain('pnpm-lock.yaml');
+    expect(trackedFiles()).toContain("pnpm-lock.yaml");
   });
 
-  it('declares pnpm through devEngines and not the legacy packageManager field', () => {
+  it("pins Node and pnpm consistently in packageManager, engines, and devEngines", () => {
     const manifest: {
       packageManager?: string;
-      devEngines?: { packageManager?: { name?: string; version?: string } };
-    } = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8'));
+      engines?: { node?: string };
+      devEngines?: {
+        packageManager?: { name?: string; version?: string };
+        runtime?: { version?: string };
+      };
+    } = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
 
-    expect(manifest.devEngines?.packageManager?.name).toBe('pnpm');
-    expect(manifest.devEngines?.packageManager?.version).toMatch(/^\d+\.\d+\.\d+$/u);
-
-    // Both fields together is the failure mode worth naming: pnpm resolves
-    // `packageManager` first, so a stale copy silently overrides the version
-    // `devEngines` declares and the one `pnpm-lock.yaml` records.
-    expect(manifest.packageManager).toBeUndefined();
+    expect(manifest.packageManager).toBe("pnpm@12.18.0");
+    expect(manifest.engines?.node).toBe("26.13.1");
+    expect(manifest.devEngines?.packageManager?.name).toBe("pnpm");
+    expect(manifest.devEngines?.packageManager?.version).toBe("12.18.0");
+    expect(manifest.devEngines?.runtime?.version).toBe("26.13.1");
   });
 
   // pnpm 12 parses pnpm-workspace.yaml with a Rust YAML parser that refuses a
@@ -68,15 +70,15 @@ describe('package manager invariants', () => {
   // more paragraph — and the failure is a hard config-load error on every pnpm
   // command, not a warning. Comments before a top-level key are not capped, so
   // block-level rationale belongs at column 1 above the key it explains.
-  it('keeps indented comment runs in pnpm-workspace.yaml under pnpm 12 limit', () => {
-    const lines = readFileSync(join(repoRoot, 'pnpm-workspace.yaml'), 'utf8').split('\n');
+  it("keeps indented comment runs in pnpm-workspace.yaml under pnpm 12 limit", () => {
+    const lines = readFileSync(join(repoRoot, "pnpm-workspace.yaml"), "utf8").split("\n");
     let run = 0;
     let longest = 0;
     for (const line of lines) {
       if (/^\s+#/u.test(line)) {
         run += 1;
         longest = Math.max(longest, run);
-      } else if (line.trim() !== '') {
+      } else if (line.trim() !== "") {
         run = 0;
       }
     }

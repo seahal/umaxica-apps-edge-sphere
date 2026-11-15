@@ -1,5 +1,7 @@
 # ADR 025: Who owns CSP violation reports
 
+> Current Sphere scope is app/core and org/core. Other Edge report owners moved with their packages.
+
 ## Status: Accepted 2026-10-06 — contract only, nothing implemented
 
 ## Context

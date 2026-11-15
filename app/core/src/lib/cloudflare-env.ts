@@ -1,4 +1,4 @@
-import { env } from 'cloudflare:workers';
+import { env } from "cloudflare:workers";
 
 /*
  * The one place this unit reads a Cloudflare binding.
@@ -10,10 +10,10 @@ import { env } from 'cloudflare:workers';
  *
  * Keeping it behind one module is what lets the Vitest suite substitute a plain
  * object for the runtime (`vitest.config.ts` aliases `cloudflare:workers`, which
- * Node cannot resolve). Every binding is optional here on purpose: most tiers
- * name no `RAILS_ORIGIN` and a plain `vite build` has no bindings at all, and
- * `getRailsClient()` fails closed on what is absent rather than branching on
- * an environment name.
+ * Node cannot resolve). Every binding is optional here on purpose: current
+ * tiers name no regional Rails origin and a plain `vite build` has no bindings
+ * at all, so `getRailsClient()` fails closed when the selected region has no
+ * origin.
  */
 export type EdgeEnv = Partial<CloudflareEnv>;
 

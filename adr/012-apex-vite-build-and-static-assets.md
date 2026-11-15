@@ -1,5 +1,7 @@
 # ADR 012: The apex workers build through Vite, and the NET series owns its root
 
+> Superseded: moved to umaxica-apps-edge-zenith. This historical decision applies to Apex packages owned by that repository.
+
 > Superseded for app/com/org apex only by [ADR 024](024-retire-app-com-org-apex-units.md). The record below is unchanged history.
 
 ## Status: Implemented 2026-08-19

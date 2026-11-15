@@ -1,10 +1,9 @@
-import { execFileSync } from 'node:child_process';
-import { existsSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { execFileSync } from "node:child_process";
+import { join } from "node:path";
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 
-const repoRoot = join(import.meta.dirname, '..');
+const repoRoot = join(import.meta.dirname, "..");
 
 /**
  * `pnpm run check:architecture` is a gate that can pass for two very different
@@ -40,25 +39,16 @@ interface CruiseOutput {
 }
 
 /**
- * The JavaScript surface, enumerated: four modules under tools/ and one
- * api/run.mjs per unit that has an HTTP-contract suite. Every unit has one now
- * — dev/apex gained its suite when it moved from Vercel to Workers, where the
- * server is `vite dev` and starts non-interactively. A floor rather than an
- * equality, so adding a unit does not fail this test, but losing the graph
- * does.
+ * The JavaScript surface is the retained CLI tooling and the two Core HTTP
+ * runners. A floor catches an empty graph without coupling this assertion to
+ * the exact number of helper modules.
  */
-const MINIMUM_MODULES = 20;
+const MINIMUM_MODULES = 8;
 
 /** The same target list `check:architecture` passes, expanded here rather than
  *  by a shell so this runs without `shell: true`. */
 function cruiseTargets(): string[] {
-  const apiDirs = ['app', 'com', 'org', 'net', 'dev'].flatMap((tld) =>
-    readdirSync(join(repoRoot, tld), { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => `${tld}/${entry.name}/api`)
-      .filter((dir) => existsSync(join(repoRoot, dir))),
-  );
-  return ['tools', ...apiDirs];
+  return ["tools", "app/core/api", "org/core/api"];
 }
 
 function cruise(): CruiseOutput {
@@ -67,21 +57,21 @@ function cruise(): CruiseOutput {
   // with a line no JSON parser accepts and fails this suite for a reason that
   // has nothing to do with the dependency graph.
   const stdout = execFileSync(
-    join(repoRoot, 'node_modules/.bin/depcruise'),
-    ['--config', '.dependency-cruiser.jsonc', '--output-type', 'json', ...cruiseTargets()],
-    { cwd: repoRoot, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 },
+    join(repoRoot, "node_modules/.bin/depcruise"),
+    ["--config", ".dependency-cruiser.jsonc", "--output-type", "json", ...cruiseTargets()],
+    { cwd: repoRoot, encoding: "utf8", maxBuffer: 32 * 1024 * 1024 },
   );
   return JSON.parse(stdout) as CruiseOutput;
 }
 
-describe('dependency-cruiser actually reads the code it gates', () => {
+describe("dependency-cruiser actually reads the code it gates", () => {
   const summary = cruise().summary;
 
-  it('cruises the whole JavaScript surface, not an empty graph', () => {
+  it("cruises the whole JavaScript surface, not an empty graph", () => {
     expect(summary.totalCruised).toBeGreaterThanOrEqual(MINIMUM_MODULES);
   });
 
-  it('resolves dependencies rather than parsing files in isolation', () => {
+  it("resolves dependencies rather than parsing files in isolation", () => {
     expect(summary.totalDependenciesCruised).toBeGreaterThan(summary.totalCruised);
   });
 });

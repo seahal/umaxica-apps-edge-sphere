@@ -1,19 +1,20 @@
-import { RouterProvider, createMemoryHistory } from '@tanstack/react-router';
-import { render } from '@testing-library/react';
-import { renderToStaticMarkup } from 'react-dom/server';
+import { RouterProvider, createMemoryHistory } from "@tanstack/react-router";
+import { render } from "@testing-library/react";
+import { renderToStaticMarkup } from "react-dom/server";
 
-import { getRouter } from '@/router';
-import { Route as rootRoute } from '@/routes/__root';
-import { Route as healthApiRoute } from '@/routes/api.v0.health[.]json';
-import { Route as revisionApiRoute } from '@/routes/api.v0.revision[.]json';
-import { Route as healthRoute } from '@/routes/health';
-import { Route as healthLivenessesRoute } from '@/routes/health.livenesses';
-import { Route as healthReadinessesRoute } from '@/routes/health.readinesses';
-import { Route as healthStartupsRoute } from '@/routes/health.startups';
-import { Route as manifestRoute } from '@/routes/manifest[.]webmanifest';
-import { Route as revisionRoute } from '@/routes/revision';
-import { Route as robotsRoute } from '@/routes/robots[.]txt';
-import { Route as sitemapRoute } from '@/routes/sitemap[.]xml';
+import { CORE_PUBLIC_HOST } from "@/lib/core-host-policy";
+import { getRouter } from "@/router";
+import { Route as rootRoute } from "@/routes/__root";
+import { Route as healthApiRoute } from "@/routes/api.v0.health[.]json";
+import { Route as revisionApiRoute } from "@/routes/api.v0.revision[.]json";
+import { Route as healthRoute } from "@/routes/health";
+import { Route as healthLivenessesRoute } from "@/routes/health.livenesses";
+import { Route as healthReadinessesRoute } from "@/routes/health.readinesses";
+import { Route as healthStartupsRoute } from "@/routes/health.startups";
+import { Route as manifestRoute } from "@/routes/manifest[.]webmanifest";
+import { Route as revisionRoute } from "@/routes/revision";
+import { Route as robotsRoute } from "@/routes/robots[.]txt";
+import { Route as sitemapRoute } from "@/routes/sitemap[.]xml";
 
 /*
  * The seam between this unit's tests and TanStack's route objects.
@@ -30,13 +31,21 @@ import { Route as sitemapRoute } from '@/routes/sitemap[.]xml';
  * instead, which is also the more faithful test — what comes back is the
  * document a browser would receive, `<head>` included.
  */
-type Handler = () => Response | Promise<Response>;
+type HandlerContext = { request?: Request };
+type Handler = (context?: HandlerContext) => Response | Promise<Response>;
 
 function handlerOf(route: { options: unknown }): Handler {
-  const { options } = route as { options: { server?: { handlers?: { GET?: Handler } } } };
+  const { options } = route as {
+    options: {
+      server?: {
+        handlers?: { GET?: (context: { request: Request }) => Response | Promise<Response> };
+      };
+    };
+  };
   const get = options.server?.handlers?.GET;
-  if (!get) throw new Error('route declares no GET handler');
-  return get;
+  if (!get) throw new Error("route declares no GET handler");
+  return (context) =>
+    get({ request: context?.request ?? new Request(`https://${CORE_PUBLIC_HOST}/`) });
 }
 
 export const handlers = {
@@ -86,7 +95,7 @@ export function headTitleOf(route: { options: unknown }, loaderData?: unknown): 
     options: { head?: (ctx: { loaderData?: unknown }) => { meta?: readonly { title?: string }[] } };
   };
   const meta = options.head?.({ loaderData }).meta ?? [];
-  return meta.find((entry) => typeof entry.title === 'string')?.title;
+  return meta.find((entry) => typeof entry.title === "string")?.title;
 }
 
 export { healthRoute, manifestRoute, revisionRoute, robotsRoute, rootRoute, sitemapRoute };

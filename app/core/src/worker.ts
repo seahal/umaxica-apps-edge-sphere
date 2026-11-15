@@ -1,16 +1,16 @@
-import type { Locale } from '@/i18n/config';
+import type { Locale } from "@/i18n/config";
 
-import appHandler from './lib/app-handler';
-import { blockedCoreResponse, classifyCorePath, dispatchToRails } from './lib/core-dispatch';
+import appHandler from "./lib/app-handler";
+import { blockedCoreResponse, classifyCorePath, dispatchToRails } from "./lib/core-dispatch";
 import {
   coreHostRejectedResponse,
   isAllowedCoreHost,
   isProductionCoreEnvironment,
-} from './lib/core-host-policy';
-import { EDGE_DISPLAY_LOCALE_HEADER, resolveDisplayLocale } from './lib/display-locale';
-import { sanitizeHealthRequest } from './lib/health-request';
-import { checkRateLimit } from './lib/rate-limit';
-import { limitRequestBody, requestBoundaryResponse } from './lib/request-boundary';
+} from "./lib/core-host-policy";
+import { EDGE_DISPLAY_LOCALE_HEADER, resolveDisplayLocale } from "./lib/display-locale";
+import { sanitizeHealthRequest } from "./lib/health-request";
+import { checkRateLimit } from "./lib/rate-limit";
+import { limitRequestBody, requestBoundaryResponse } from "./lib/request-boundary";
 import {
   classifyEdgeRoute,
   createRequestId,
@@ -21,13 +21,13 @@ import {
   runWithRequestId,
   withRequestId,
   withRequestIdRequest,
-} from './lib/request-log';
+} from "./lib/request-log";
 import {
   responseGenerationTimeoutResponse,
   responseGenerationBudgetMs,
   withResponseGenerationTimeout,
-} from './lib/response-timeout';
-import { withSecurityHeaders } from './security-headers';
+} from "./lib/response-timeout";
+import { withSecurityHeaders } from "./security-headers";
 
 /**
  * First code the Workers runtime invokes for every request to this frame's Core
@@ -37,7 +37,8 @@ import { withSecurityHeaders } from './security-headers';
  * `adr/007-shared-fqdn-core-dispatch.md`.
  *
  * - Rails-owned paths never reach `appHandler.fetch`: dispatched directly to
- *   Rails at `RAILS_ORIGIN`, with the browser's Cookie/CSRF/auth headers
+ *   the Rails origin selected by the `jp`/`us` host, with the browser's
+ *   Cookie/CSRF/auth headers
  *   preserved verbatim.
  * - Blocked paths never reach Rails or the application.
  * - Everything else (the default) is application-owned: the inbound `Cookie`
@@ -73,11 +74,11 @@ import { withSecurityHeaders } from './security-headers';
  */
 function isHealthPath(pathname: string): boolean {
   return (
-    pathname === '/health' ||
-    pathname === '/health/startups' ||
-    pathname === '/health/livenesses' ||
-    pathname === '/health/readinesses' ||
-    pathname === '/api/v0/health.json'
+    pathname === "/health" ||
+    pathname === "/health/startups" ||
+    pathname === "/health/livenesses" ||
+    pathname === "/health/readinesses" ||
+    pathname === "/api/v0/health.json"
   );
 }
 
@@ -90,21 +91,20 @@ function isHealthPath(pathname: string): boolean {
  * endpoint an orchestrator trusts to mean "alive" must not be throttleable.
  *
  * `/health` and `/health/readinesses` are deliberately absent. Both fetch Rails
- * at `RAILS_ORIGIN` (`src/routes/health.ts`,
+ * at the origin selected for the request's region (`src/routes/health.ts`,
  * `src/routes/health.readinesses.ts`), so exempting them publishes an
  * unauthenticated, uncounted path into the Rails origin — one inbound request,
  * one outbound Rails request, no ceiling. Readiness is the probe whose job is to
  * answer "do not send me traffic"; being throttled is a correct answer for it,
  * and is not a correct answer for liveness or startup.
  *
- * The same three paths are the exempt set in every apex `create-apex-app.ts`
- * and every TanStack public surface's `src/request-handler.ts`. One rule, seventeen units.
+ * The same three paths are the exempt set in the Core dispatch boundary.
  */
 function isUnmeteredProbe(pathname: string): boolean {
   return (
-    pathname === '/health/startups' ||
-    pathname === '/health/livenesses' ||
-    pathname === '/api/v0/health.json'
+    pathname === "/health/startups" ||
+    pathname === "/health/livenesses" ||
+    pathname === "/api/v0/health.json"
   );
 }
 
@@ -128,7 +128,7 @@ function isUnmeteredProbe(pathname: string): boolean {
  */
 function isRateLimitExempt(pathname: string): boolean {
   return (
-    pathname.startsWith('/assets/') || pathname === '/favicon.ico' || isUnmeteredProbe(pathname)
+    pathname.startsWith("/assets/") || pathname === "/favicon.ico" || isUnmeteredProbe(pathname)
   );
 }
 
@@ -148,12 +148,12 @@ function isRateLimitExempt(pathname: string): boolean {
  */
 function isAuthPath(pathname: string): boolean {
   return (
-    pathname.startsWith('/oidc/') ||
-    pathname === '/oidc' ||
-    pathname === '/sign/out' ||
-    pathname === '/sign/out/' ||
-    pathname === '/sign/out/complete' ||
-    pathname === '/sign/out/complete/'
+    pathname.startsWith("/oidc/") ||
+    pathname === "/oidc" ||
+    pathname === "/sign/out" ||
+    pathname === "/sign/out/" ||
+    pathname === "/sign/out/complete" ||
+    pathname === "/sign/out/complete/"
   );
 }
 
@@ -164,7 +164,7 @@ function isAuthPath(pathname: string): boolean {
  */
 function stripApplicationCookie(request: Request, displayLocale: Locale): Request {
   const headers = new Headers(request.headers);
-  headers.delete('cookie');
+  headers.delete("cookie");
   headers.delete(EDGE_DISPLAY_LOCALE_HEADER);
   headers.set(EDGE_DISPLAY_LOCALE_HEADER, displayLocale);
   const body = request.body;
@@ -180,7 +180,7 @@ function stripApplicationCookie(request: Request, displayLocale: Locale): Reques
     referrer: request.referrer,
     referrerPolicy: request.referrerPolicy,
     signal: request.signal,
-    ...(body === null ? {} : { body, duplex: 'half' as const }),
+    ...(body === null ? {} : { body, duplex: "half" as const }),
   };
   return new Request(request.url, init);
 }
@@ -202,7 +202,7 @@ export default {
     const finish = (response: Response, outcome = outcomeForStatus(response.status)): Response => {
       const finalResponse = withRequestId(response, requestId);
       logEdgeRequest({
-        service: 'core',
+        service: "core",
         environment,
         request_id: requestId,
         method,
@@ -220,7 +220,7 @@ export default {
           allowLocalhost: !isProductionCoreEnvironment(env),
         })
       ) {
-        return finish(withSecurityHeaders(coreHostRejectedResponse(), isProduction), 'rejected');
+        return finish(withSecurityHeaders(coreHostRejectedResponse(), isProduction), "rejected");
       }
 
       const pathname = url.pathname;
@@ -228,8 +228,8 @@ export default {
 
       // Cheapest first: a blocked path costs nothing and is not worth a limiter
       // call, since it reaches no application code either way.
-      if (ownership === 'blocked') {
-        return finish(withSecurityHeaders(blockedCoreResponse(), isProduction), 'rejected');
+      if (ownership === "blocked") {
+        return finish(withSecurityHeaders(blockedCoreResponse(), isProduction), "rejected");
       }
 
       const response = await runWithRequestId(requestId, () =>
@@ -259,7 +259,7 @@ export default {
               }
             }
 
-            if (ownership === 'rails') {
+            if (ownership === "rails") {
               // Rails headers its own responses; the 503 substituted when the
               // dispatch never reached Rails is Edge's own document, so
               // `dispatchToRails` headers that one itself rather than reporting
@@ -279,9 +279,9 @@ export default {
               resolveDisplayLocale(new URL(sanitizedRequest.url)),
             );
             const bounded = await limitRequestBody(strippedRequest, signal);
-            if (bounded.kind !== 'ok') {
+            if (bounded.kind !== "ok") {
               return withSecurityHeaders(
-                bounded.kind === 'aborted'
+                bounded.kind === "aborted"
                   ? responseGenerationTimeoutResponse()
                   : requestBoundaryResponse(bounded.kind),
                 isProduction,
@@ -292,7 +292,7 @@ export default {
               withRequestIdRequest(bounded.request, requestId),
             );
             const responseHeaders = new Headers(appResponse.headers);
-            responseHeaders.delete('set-cookie');
+            responseHeaders.delete("set-cookie");
 
             return new Response(appResponse.body, {
               status: appResponse.status,
@@ -308,28 +308,28 @@ export default {
         ),
       );
 
-      if (ownership === 'rails' && !timeoutState.occurred) {
+      if (ownership === "rails" && !timeoutState.occurred) {
         // `dispatchToRails` emits the one completion record for a transparent
         // Rails relay. The generic Edge record is for application-owned and
         // Edge-generated responses; emitting both would duplicate one request.
         return withRequestId(response, requestId);
       }
 
-      return finish(response, timeoutState.occurred ? 'timeout' : undefined);
+      return finish(response, timeoutState.occurred ? "timeout" : undefined);
     } catch {
       return finish(
         withSecurityHeaders(
-          new Response('Internal Server Error\n', {
+          new Response("Internal Server Error\n", {
             status: 500,
             headers: {
-              'Cache-Control': 'no-store',
-              'Content-Type': 'text/plain; charset=utf-8',
-              'X-Robots-Tag': 'noindex, nofollow',
+              "Cache-Control": "no-store",
+              "Content-Type": "text/plain; charset=utf-8",
+              "X-Robots-Tag": "noindex, nofollow",
             },
           }),
           isProduction,
         ),
-        'failed',
+        "failed",
       );
     }
   },

@@ -1,18 +1,25 @@
 # ADR 007: Shared-FQDN Core dispatch (`worker.ts` as first-touch entry)
 
+> Current Sphere scope is `app/core` and `org/core`. Path ownership and cookie
+> boundaries remain current; references to `com/core`, Next.js/OpenNext, and
+> Workers VPC below describe earlier repository states. Current implementation
+> uses TanStack Start and regional public fetch (ADRs 013 and 018). Detailed
+> initial implementation notes below remain historical; the current source and
+> ADR 018 define the active transport.
+
 ## Status: Implemented
 
 ## Context
 
-`jp.umaxica.{app,com,org}` (the `*/core` Next.js/OpenNext Worker) is the
-sole browser-facing surface for these three domain families. Rails owns a
+`jp.umaxica.{app,org}` (the `*/core` TanStack Start Worker) is the
+sole browser-facing Core surface for these two domain families. Rails owns a
 set of real browser-facing routes under the same FQDN — `/api/v0/*`,
 `/web/v0/*`, `/edge/v0/*`, `/oidc/*` (including `/oidc/callback`, which sets
 authentication cookies), `/sign/out`, `/sign/out/complete`,
 `/.well-known/jwks.json`, `/csp-violation-report` — that must reach Rails,
 not Next.js, and must carry the browser's own `Cookie`/CSRF headers
-verbatim. Everything else must reach Next.js with no `Cookie` header at all,
-and Next.js must never be able to set one the browser keeps. Two prior
+verbatim. Everything else must reach the application with no `Cookie` header at
+all, and the application must never set one the browser keeps. Two prior
 architecture options were compared: a dedicated Router Worker in front of
 `*/core` (Option A), and a thin custom entry point on the existing
 `*/core` Worker itself (Option B).
@@ -22,7 +29,7 @@ architecture options were compared: a dedicated Router Worker in front of
 **Option B.** `*/core/src/worker.ts` — already the Worker's `main` per
 `wrangler.jsonc`, and already the first code the Workers runtime invokes for
 every request — is extended to classify the request's path and branch
-_before_ calling into Next.js/OpenNext at all. No new Worker, no new
+_before_ calling into the application at all. No new Worker, no new
 wrangler project, no `services` binding between two Workers.
 
 **Option A was rejected** because it adds a second Worker with no isolation
