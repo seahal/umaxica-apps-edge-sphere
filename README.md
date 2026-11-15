@@ -42,7 +42,7 @@ The app Core serves at `http://127.0.0.1:5405`; the org Core serves at
 Core. Browser tests need Chromium, installed with `pnpm exec playwright install
 chromium`.
 
-The Dev Container is configured in `.devcontainer/devcontainer.json`. Its
+The workspace container `core` is defined in `compose.workspace.yaml`. The
 compose project is named `umaxica-apps-edge-sphere`. `scripts/dev-start` can
 start the compose services directly. Cloudflare credentials are obtained
 interactively; do not add credentials to tracked configuration.

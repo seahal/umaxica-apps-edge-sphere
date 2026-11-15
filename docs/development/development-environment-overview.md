@@ -4,7 +4,7 @@ The development workspace contains two deployable Core packages:
 `app/core` and `org/core`. `all/busy` is a static maintenance Worker, and
 `tools/vpc-probe` is a local VPC diagnostic for Rails hosts owned by Press.
 
-The rootless Podman Dev Container provides the local toolchain. Compose keeps a
+The rootless Podman workspace container (`compose.workspace.yaml`) provides the local toolchain. Compose keeps a
 single `core` development service with the app Core on port 5405 and the org Core
 on port 5305. The local Cloudflare Tunnel sidecar remains part of the
 development setup; its external configuration is owner-managed.
