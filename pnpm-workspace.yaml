@@ -100,10 +100,10 @@ catalog:
   # The spell checker. Pinned here rather than per unit because the dictionary
   # it reads (.cspell/project-words.txt) is repository-wide: a unit resolving a
   # different major could disagree about what the config file even means.
-  cspell: ^10.4.1
+  cspell: ^10.5.1
   dependency-cruiser: ^18.7.2
   happy-dom: ^21.0.4
-  knip: ^6.45.0
+  knip: ^6.45.1
   react: ^19.3.1
   react-aria-components: ^1.22.1
   react-dom: ^19.3.1
@@ -140,7 +140,7 @@ catalog:
   # Floor set by `@cloudflare/vite-plugin`'s peer range (^4.127.0), not chosen
   # independently. Bumping the plugin without bumping this is a resolution
   # failure rather than a subtle one.
-  wrangler: ^4.160.0
+  wrangler: ^4.162.0
 
 ignoredBuiltDependencies:
   - esbuild
