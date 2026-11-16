@@ -1,6 +1,10 @@
 # Development Tunnel boundary
 
-The Dev Container Compose setup retains a `cloudflare-tunnel` service for the
+> **2026-11-16 — development container and Podman Compose removed.** Every reference below to
+> `compose.yaml`, `core`, `scripts/dev-start`, Podman networks or the containerised connector
+> describes the removed setup. No replacement way to run the Edge-owned Tunnel connector is defined yet.
+
+The development Compose setup retains a `cloudflare-tunnel` service for the
 development network. Its presence is local tooling; it does not declare the
 production routes or Worker inventory.
 

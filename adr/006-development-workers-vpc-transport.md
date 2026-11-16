@@ -1,5 +1,7 @@
 # Plan 006: A development transport over the Workers VPC binding
 
+> **2026-11-16:** Edge no longer has a development container or Podman Compose setup ([ADR 028](028-remove-development-container-and-compose.md)). Statements below about `compose.yaml`, `core`, `scripts/dev-start` or Podman networks are history.
+
 > Scope note: application-unit transport details below describe the pre-split estate. Sphere keeps tools/vpc-probe as a separate diagnostic; the two Core packages do not use Workers VPC.
 
 ## Status: Implemented and verified end to end

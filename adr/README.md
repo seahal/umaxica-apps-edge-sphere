@@ -24,6 +24,9 @@ records whose implementation moved with its packages.
 | [023](023-rails-proxy-trust-boundary.md)                       | Core to Rails proxy trust boundary                             |
 | [025](025-csp-report-ownership.md)                             | CSP report ownership contract                                  |
 | [026](026-tanstack-start-stable-caret-range.md)                | TanStack Start version range                                   |
+| [028](028-remove-development-container-and-compose.md)         | Development container and Compose removed                      |
+| [029](029-use-direnv.md)                                       | Development environment loaded with direnv                     |
+| [030](030-use-mise.md)                                         | Runtime versions managed with mise                             |
 
 Current deployment scope is `app/core` and `org/core`. `all/busy` and
 `tools/vpc-probe` are retained outside the pnpm workspace. The VPC probe is a

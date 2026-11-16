@@ -1,5 +1,7 @@
 # ADR 014: Edge owns its development Tunnel
 
+> **2026-11-16:** Edge no longer has a development container or Podman Compose setup ([ADR 028](028-remove-development-container-and-compose.md)). Statements below about `compose.yaml`, `core`, `scripts/dev-start` or Podman networks are history.
+
 > Superseded for app/com/org apex only by [ADR 024](024-retire-app-com-org-apex-units.md). The record below is unchanged history.
 
 ## Status: Accepted (amended 2026-09-04 — fallback withdrawn, token variable renamed)

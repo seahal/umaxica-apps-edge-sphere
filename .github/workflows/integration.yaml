@@ -275,8 +275,8 @@ jobs:
   # runs locally.
   #
   # `test:e2e` is deliberately NOT here. Playwright needs a browser binary that
-  # neither this workflow nor `Containerfile` installs, so adding the job would
-  # mean adding `playwright install --with-deps` to both; it stays a documented
+  # this workflow does not install, so adding the job would mean adding
+  # `playwright install --with-deps` here; it stays a documented
   # local gate until that is a decision someone makes on purpose.
   test-api:
     runs-on: ubuntu-slim

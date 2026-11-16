@@ -369,7 +369,7 @@ for (const ws of manifest.railsBackedVite) {
   const config = loadWrangler(ws);
   if (!config) continue;
   // `local` is the extra tier: vite dev runs the Worker in workerd, and it is
-  // the tier whose local region may point at the development container's Rails.
+  // the tier whose local region may point at a local Rails.
   checkEnvironments(ws, config, ['local', 'development', 'test']);
   checkViteWorker(ws, config);
   checkPublicAssets(ws);
@@ -385,8 +385,8 @@ for (const ws of manifest.railsBackedVite) {
 }
 
 // Deploying production means running with no `--env`, and CLOUDFLARE_ENV picks
-// the environment when the flag is absent. compose.yaml exports
-// CLOUDFLARE_ENV=development, so a deploy script that does not blank it would
+// the environment when the flag is absent. A developer shell that exports
+// CLOUDFLARE_ENV=development means a deploy script that does not blank it would
 // silently ship to `<name>-development` and leave production untouched — a
 // failure that looks like success. Verified with `wrangler deploy --dry-run`.
 for (const ws of manifest.railsBackedVite) {

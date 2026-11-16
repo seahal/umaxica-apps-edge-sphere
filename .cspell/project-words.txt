@@ -144,3 +144,6 @@ HSTS        # RFC 6797 HTTP Strict Transport Security, set in every _headers
 zizmor      # GitHub Actions static analyser (the `zizmor` job)
 pipx        # runs zizmor from PyPI on ubuntu-slim
 xper
+
+# --- Local tooling ---
+envrc       # direnv's per-directory file (.envrc, .envrc.credential, .envrc.local)

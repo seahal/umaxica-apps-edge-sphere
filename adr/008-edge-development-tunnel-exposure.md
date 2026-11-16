@@ -1,5 +1,7 @@
 # ADR 008: Edge development surfaces are published through the Rails-owned Tunnel
 
+> **2026-11-16:** Edge no longer has a development container or Podman Compose setup ([ADR 028](028-remove-development-container-and-compose.md)). Statements below about `compose.yaml`, `core`, `scripts/dev-start` or Podman networks are history.
+
 > Historical scope note: the ingress inventory below predates the split. Apex ingress moved to Zenith and public content ingress moved to Press.
 
 > Superseded for app/com/org apex only by [ADR 024](024-retire-app-com-org-apex-units.md). The record below is unchanged history.

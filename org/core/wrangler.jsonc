@@ -73,7 +73,7 @@
     // `local` is the everyday `pnpm dev` loop. It names no regional Rails origin, so by default
     // Rails-owned paths fail closed to 503 and `/health` reports Rails as not configured —
     // which is what `pnpm test:api`, Playwright and CI (none of which run Rails) need.
-    // To reach the development container's Rails, copy `.dev.vars.example` to
+    // To reach a local Rails, copy `.dev.vars.example` to
     // `.dev.vars` and uncomment `RAILS_REGION=jp` plus `RAILS_ORIGIN_JP=http://core.org.localhost:3000`. Measured
     // 2026-08-22: workerd reaches `http://core.org.localhost:<port>` with
     // `global_fetch_strictly_public` set, so that flag needs no exception here.

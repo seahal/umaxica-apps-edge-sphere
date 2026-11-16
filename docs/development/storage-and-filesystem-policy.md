@@ -8,7 +8,7 @@ remain on normal storage.
 
 Run `scripts/benchmark-storage` to record elapsed time, maximum RSS, and repository disk
 growth for frozen install, a representative build, and Vitest. Supplement the report with
-Next/workerd startup, Chromium smoke, container memory (`podman stats --no-stream`), and
+Next/workerd startup, Chromium smoke, process memory, and
 filesystem-heavy tasks.
 
 Reintroducing tmpfs requires repeated measurements on the target machine, a material and

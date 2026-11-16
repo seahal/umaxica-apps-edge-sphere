@@ -1,6 +1,6 @@
 # Wrangler authentication
 
-Wrangler holds **dedicated container OAuth state, never an API token**. This is not a
+Wrangler holds **OAuth state, never an API token**. This is not a
 preference: an API token cannot open a remote-binding session at all. The edge-preview
 endpoint answers `10405 Method not allowed for this authentication scheme`, so
 `--env vpc` — the only path that reaches Rails over the VPC binding — is unavailable
@@ -13,10 +13,9 @@ without an OAuth session. `tools/vpc-probe/empty.env` exists to keep a stray
 pnpm run login
 ```
 
-`compose.yaml` publishes `127.0.0.1:8976:8976`, so the ordinary loopback flow works from a
-browser on the container host and that is what `scripts/wrangler-login` runs. Reach for the
-device grant below when that published port is not reachable — under `podman exec`, over
-SSH, or from any browser that is not on the host.
+The ordinary loopback flow works when the browser runs on the same machine as Wrangler,
+and that is what `scripts/wrangler-login` runs. Reach for the device grant below when it
+does not — over SSH, or from any browser on another machine.
 
 ## Otherwise, the Device Authorization Grant
 
@@ -34,24 +33,15 @@ Wrangler prints a verification URL and a short user code. Open the URL in any br
 on any machine, enter the code, and approve. The CLI polls until it is authorized and
 then writes the token itself.
 
-From outside the container, the same thing without entering it first:
-
-```bash
-podman exec -it -w /home/edge/workspace \
-  umaxica-apps-edge-sphere-core-1 \
-  pnpm run login:device
-```
-
-`--no-browser` because the container has no browser to open. `--no-use-keyring` because
-it has no OS keychain; the token lands in a plaintext file instead, described below.
+`--no-browser` because the browser may be on another machine. `--no-use-keyring` so the
+token lands in the plaintext file described below rather than an OS keychain.
 
 ## Why the loopback flow cannot always work
 
 `wrangler login` defaults to the Authorization Code Grant with PKCE, which receives the
 authorization code by **redirecting the browser to `http://localhost:8976/oauth/callback`**.
-That requires an inbound path from the browser into the container. `compose.yaml` provides
-one for the host browser and nothing else: `podman exec` publishes no port at all, and a
-browser on another machine has no route to the host's loopback. In those cases the browser
+That requires the browser to reach the machine running Wrangler on loopback. A browser on
+another machine, or a session over SSH, has no such route. In those cases the browser
 fails to connect and the code is stranded in the address bar.
 
 Pasting that stranded URL back does not rescue it. The `state` and the PKCE
@@ -60,16 +50,15 @@ flow, so a code can be redeemed by that process and no other. Once it exits — 
 exits after **two minutes** — the code is unredeemable regardless of who holds it.
 
 The device grant inverts the direction. Nothing is delivered _to_ the CLI; the CLI
-fetches the token itself from `oauth2/token`. Only outbound HTTPS is needed, which the
-container always has.
+fetches the token itself from `oauth2/token`. Only outbound HTTPS is needed.
 
 |                                     | Authorization Code + PKCE (loopback) | Device Authorization Grant   |
 | ----------------------------------- | ------------------------------------ | ---------------------------- |
 | Code arrives via                    | browser redirect to `localhost:8976` | CLI polls the token endpoint |
-| Requires a published port           | yes, `127.0.0.1:8976`                | no                           |
+| Requires an inbound loopback port   | yes, `127.0.0.1:8976`                | no                           |
 | Requires a browser on the same host | yes                                  | no                           |
 | Approval window                     | ~2 minutes                           | 5 minutes                    |
-| Works under `podman exec`           | no                                   | yes                          |
+| Works over SSH                      | no                                   | yes                          |
 
 Wrangler documents `--device` for precisely this case: "Useful in containers, remote SSH
 sessions, or other environments where localhost:8976 is unreachable from your browser."
@@ -91,15 +80,13 @@ with an owner-approved current procedure and environment.
 
 ## Where the token lives
 
-`~/.config/.wrangler/config/default.toml`, mode `0600`, inside the container. Nothing on
-the host holds a copy and nothing persists it: the container obtains the session
-interactively rather than receiving it, and recreating the container means logging in
-again — see [credential-and-secret-management.md](credential-and-secret-management.md).
+`~/.config/.wrangler/config/default.toml`, mode `0600`, on the machine that ran the login.
+It is never committed or copied elsewhere; `pnpm exec wrangler logout` removes it — see [credential-and-secret-management.md](credential-and-secret-management.md).
 
 ## Measured, 2026-08-21
 
-The device grant completed in a container reached over `podman exec`, with no port
-reachable from the browser. From the Wrangler log of the successful run:
+The device grant completed in the former development container, reached over
+`podman exec`, with no port reachable from the browser. From the Wrangler log of the successful run:
 
 ```text
 grant_type=urn:ietf:params:oauth:grant-type:device_code

@@ -28,7 +28,6 @@ build step. `tools/vpc-probe` is not part of the production deployment list.
 
 - Node.js 26.13.1
 - pnpm 12.18.0 (the only package manager; `pnpm-lock.yaml` is the only lockfile)
-- Podman with Compose or Docker Compose for the optional development container
 
 ## Quick start
 
@@ -42,10 +41,10 @@ The app Core serves at `http://127.0.0.1:5405`; the org Core serves at
 Core. Browser tests need Chromium, installed with `pnpm exec playwright install
 chromium`.
 
-The workspace container `core` is defined in `compose.workspace.yaml`. The
-compose project is named `umaxica-apps-edge-sphere`. `scripts/dev-start` can
-start the compose services directly. Cloudflare credentials are obtained
-interactively; do not add credentials to tracked configuration.
+There is no development container or Compose setup; see the
+[development environment overview](docs/development/development-environment-overview.md).
+Cloudflare credentials are obtained interactively; do not add credentials to
+tracked configuration.
 
 ## Tooling and checks
 

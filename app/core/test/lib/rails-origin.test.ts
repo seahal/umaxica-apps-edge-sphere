@@ -19,7 +19,7 @@ describe("parseRailsOrigin", () => {
     ["a number", 3000],
     ["an empty string", ""],
     ["not a URL", "rails.example"],
-    // The browser's cookies ride this hop; cleartext is for the dev container only.
+    // The browser's cookies ride this hop; cleartext is for local development only.
     ["plain http to a public host", "http://rails.example"],
     ["plain http to a lookalike of localhost", "http://localhost.rails.example"],
     ["another scheme", "ftp://rails.example"],

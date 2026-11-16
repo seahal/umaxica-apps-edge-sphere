@@ -42,8 +42,8 @@ catalog:
   # lockstep — the plugin package declares an EXACT peer on the runner
   # ("size-limit": "13.0.3"), so a drift here is a resolution failure, not a
   # subtle one. The preset packages are deliberately not used: @size-limit/time
-  # (which preset-app pulls in) needs a headless Chrome that neither CI nor the
-  # Containerfile installs — the same reason `test:e2e` is not a CI gate.
+  # (which preset-app pulls in) needs a headless Chrome that CI does not
+  # install — the same reason `test:e2e` is not a CI gate.
   "@size-limit/file": ^14.3.0
   # Tailwind v4 has no JS config file: the theme is declared in each unit's own
   # stylesheet with `@theme`. One engine, one delivery mechanism, because every

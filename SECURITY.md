@@ -46,8 +46,7 @@ confirmed and report it privately.
   through the Cookie Store API.
 - Request and Rails dispatch logs use closed fields and do not accept secrets,
   cookies, tokens, request bodies, user identifiers, or free text.
-- Credentials are not stored in the repository or container image. See
-  [credential and secret management](docs/development/credential-and-secret-management.md)
-  and [container security](docs/development/container-security-policy.md).
+- Credentials are not stored in the repository. See
+  [credential and secret management](docs/development/credential-and-secret-management.md).
 - CI runs dependency and secret scanning. See
   `.github/workflows/integration.yaml`.

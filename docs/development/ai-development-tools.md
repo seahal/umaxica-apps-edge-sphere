@@ -1,11 +1,9 @@
 # AI development tools
 
-Claude and Codex are installed inside the image by the `Containerfile`. No
-host AI state is mounted, no API key is injected, and no permission bypass is enabled.
+Claude Code and Codex are installed by the developer; this repository does not pin or
+install them. No API key is committed and no permission bypass is enabled.
 
-Both authenticate through their own browser login, initiated from inside the container. The
-resulting state lives in the container only and is discarded when the container is
-recreated; there is no persistent volume and nothing is written back to the host.
+Both authenticate through their own browser login.
 
 ## Claude Code
 
